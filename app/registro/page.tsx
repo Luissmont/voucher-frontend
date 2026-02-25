@@ -44,8 +44,7 @@ export default function RegisterScreen() {
       const response = await AuthService.register(validation.data);
       console.log("Registro exitoso, token:", response.token);
       
-      alert("¡REGISTRO EXITOSO! Redirigiendo a la app...");
-      // router.push('/dashboard'); // Descomentar cuando dashboard ande
+        router.push('/configuracion');
 
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocurrió un error inesperado');
