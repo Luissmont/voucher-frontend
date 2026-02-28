@@ -2,26 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { DashboardService } from '@/services/dashboard.service';
 import { DashboardData } from '@/models/dashboard.schema';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { 
   Settings, Target, Zap, Plus, Receipt, 
-  AlertCircle, Calendar, Lock, X, DollarSign, CheckCircle2 
+  AlertCircle, Calendar, X, DollarSign, Lock,
+  TrendingDown, CheckCircle2
 } from 'lucide-react';
 
 export default function DashboardScreen() {
-  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isActionLoading, setIsActionLoading] = useState(false); 
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [activeModal, setActiveModal] = useState<'gasto' | 'ingreso' | 'prueba' | null>(null);
 
-  const [gastoForm, setGastoForm] = useState({ nombre: '', monto: '' });
   const [ingresoMonto, setIngresoMonto] = useState('');
+  const [reservarIngreso, setReservarIngreso] = useState(false);
+
+  const [gastoNombre, setGastoNombre] = useState('');
+  const [gastoMonto, setGastoMonto] = useState('');
+  const [gastoCategoria, setGastoCategoria] = useState<'Vital' | 'Recurrente' | 'Variable'>('Variable');
+  const [gastoFrecuencia, setGastoFrecuencia] = useState<'Semanal' | 'Quincenal' | 'Mensual'>('Mensual');
+
+  const [pruebaNombre, setPruebaNombre] = useState('');
   const [pruebaMonto, setPruebaMonto] = useState('');
 
   const fechaHoy = new Intl.DateTimeFormat('es-ES', { 
@@ -39,101 +43,102 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  useEffect(() => { loadDashboardData(); }, []);
 
   const closeModal = () => {
     setActiveModal(null);
-    setGastoForm({ nombre: '', monto: '' });
-    setIngresoMonto('');
-    setPruebaMonto('');
+    setIngresoMonto(''); setReservarIngreso(false);
+    setGastoNombre(''); setGastoMonto(''); setGastoCategoria('Variable'); setGastoFrecuencia('Mensual');
+    setPruebaNombre(''); setPruebaMonto('');
     setIsActionLoading(false);
   };
 
-
-  const handleRegistrarGasto = async () => {
-    const monto = parseFloat(gastoForm.monto);
-    if (!gastoForm.nombre || isNaN(monto) || monto <= 0) return;
+  const handleIngreso = async () => {
     setIsActionLoading(true);
-    try {
-      await DashboardService.registrarGastoVariable({ nombre: gastoForm.nombre, monto, esRecurrente: false });
-      await loadDashboardData(); 
-      closeModal();
-    } catch (error) { alert("Error al registrar gasto"); setIsActionLoading(false); }
+    await DashboardService.registrarIngresoExtra({ monto: parseFloat(ingresoMonto), reservar: reservarIngreso });
+    await loadDashboardData();
+    closeModal();
   };
 
-  const handleRegistrarIngreso = async () => {
-    const monto = parseFloat(ingresoMonto);
-    if (isNaN(monto) || monto <= 0) return;
+  const handleGasto = async () => {
     setIsActionLoading(true);
-    try {
-      await DashboardService.registrarIngresoExtra({ monto });
-      await loadDashboardData(); 
-      closeModal();
-    } catch (error) { alert("Error al registrar ingreso"); setIsActionLoading(false); }
+    await DashboardService.registrarGasto({ 
+      nombre: gastoNombre, 
+      monto: parseFloat(gastoMonto), 
+      categoria: gastoCategoria,
+      frecuencia: gastoCategoria !== 'Variable' ? gastoFrecuencia : undefined 
+    });
+    await loadDashboardData();
+    closeModal();
   };
-
-  const handlePruebaGasto = async () => {
-    const monto = parseFloat(pruebaMonto);
-    if (isNaN(monto) || monto <= 0) return;
-    setIsActionLoading(true);
-    try {
-      const resultado = await DashboardService.simularPruebaGasto({ monto });
-      alert(resultado.mensaje); 
-      closeModal();
-    } catch (error) { alert("Error en la prueba de gasto"); setIsActionLoading(false); }
-  };
-
-  const montoGastoNumber = parseFloat(gastoForm.monto) || 0;
-  const nuevoSaldoProyectado = (data?.saldoProyectado || 0) - montoGastoNumber;
-
 
   if (isLoading || !data) {
     return (
-      <div className="min-h-screen bg-[#0B2046] flex items-center justify-center">
+      <div className="min-h-screen bg-[#152D4F] flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#00C897] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  return (
-    <main className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans pb-10 relative overflow-hidden">
-      
-      <div className="bg-[#0B2046] px-6 pt-12 pb-36 rounded-b-[3rem] absolute top-0 w-full -z-10 shadow-2xl"></div>
+  const montoGastoParseado = parseFloat(gastoMonto) || 0;
+  const saldoLibreNuevoGasto = data.saldoActual - montoGastoParseado;
+  
+  const montoSimulado = parseFloat(pruebaMonto) || 0;
+  const isSimulacionLista = pruebaNombre.trim().length > 0 && montoSimulado > 0;
+  const saldoLibreSimulado = data.saldoActual - montoSimulado;
+  
+  const pruebaAprobada = montoSimulado <= (data.saldoActual * 0.5);
 
-      <header className="flex justify-between items-start px-6 pt-12 mb-6">
+  return (
+    <main className="min-h-screen bg-[#F8FAFC] relative font-sans pb-10">
+      
+      <div className="absolute top-0 w-full h-[380px] bg-[#152D4F] rounded-b-[40px] z-0"></div>
+
+      <header className="relative z-10 flex justify-between items-start px-6 pt-12 mb-6">
         <div>
           <h1 className="text-white text-3xl font-bold tracking-tight">VouCher</h1>
           <p className="text-blue-200 text-sm capitalize mt-1">{fechaHoy}</p>
         </div>
-        <Link href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+        <Link href="/ajustes" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors active:scale-95">
           <Settings size={20} />
         </Link>
       </header>
 
-      <div className="px-6 space-y-4 flex-1 overflow-y-auto pb-6">
+      <div className="relative z-10 px-6 space-y-4">
         
-        {/* TARJETA SALDOS */}
-        <div className="bg-[#1F3A63] border border-[#2C4A7C] rounded-[24px] p-6 shadow-xl text-white">
+        <div className="bg-[#1F3A63] border border-[#2C4A7C]/50 rounded-[24px] p-6 shadow-xl text-white">
            <div className="flex items-center gap-2 mb-2">
             <Target size={16} className="text-[#00C897]" />
-            <span className="text-sm font-medium opacity-90">Saldo Proyectado</span>
+            <span className="text-sm font-medium opacity-90">Saldo Actual</span>
           </div>
-          <h2 className="text-5xl font-bold tracking-tight mb-1">
-            ${data.saldoProyectado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <h2 className="text-[42px] leading-none font-bold tracking-tight mb-1">
+            ${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </h2>
-          <p className="text-blue-200 text-xs mb-6 opacity-80">Disponible al final del mes</p>
-          <div className="h-px w-full bg-[#2C4A7C]/60 mb-4"></div>
+          <p className="text-blue-200 text-xs mb-6 opacity-80">Disponible para gastar hoy</p>
+          
+          <div className="h-px w-full bg-[#2C4A7C]/80 mb-4"></div>
+          
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-blue-100 text-sm opacity-90">Saldo Actual</span>
-              <span className="font-bold text-sm">${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="text-blue-100 text-sm">Saldo Total</span>
+              <span className="font-bold text-sm">${data.saldoTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-blue-100 text-sm opacity-90">Gastos Pendientes</span>
-              <span className="text-red-400 font-bold text-sm">-${data.gastosPendientesTotales.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="text-blue-100 text-sm">Gastos Pendientes</span>
+              <span className="text-red-400 font-bold text-sm">
+                -${data.gastosPendientesTotales.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
             </div>
+            {data.reservadoSiguienteCiclo > 0 && (
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[#8B5CF6] text-sm flex items-center gap-1.5">
+                  <Lock size={14} /> Reservado (siguiente ciclo)
+                </span>
+                <span className="text-[#8B5CF6] font-bold text-sm">
+                  ${data.reservadoSiguienteCiclo.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -145,57 +150,53 @@ export default function DashboardScreen() {
         </button>
 
         <div className="flex gap-4 pt-2">
-          <button 
-            onClick={() => setActiveModal('ingreso')}
-            className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-start hover:border-[#00C897] transition-all active:scale-95"
-          >
-            <div className="w-10 h-10 rounded-full bg-[#EAFBF6] text-[#00C897] flex items-center justify-center mb-3">
-              <Plus size={20} strokeWidth={3} />
+          <button onClick={() => setActiveModal('ingreso')} className="flex-1 bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex flex-col items-center hover:border-[#00C897] transition-all active:scale-95">
+            <div className="w-12 h-12 rounded-2xl bg-[#EAFBF6] text-[#00C897] flex items-center justify-center mb-3">
+              <Plus size={24} strokeWidth={3} />
             </div>
-            <span className="text-[#0B2046] font-bold text-sm">Ingreso Extra</span>
+            <span className="text-[#0B2046] font-bold text-sm mb-1">Ingreso Extra</span>
+            <span className="text-gray-400 text-xs">Registrar entrada</span>
           </button>
-          <button 
-            onClick={() => setActiveModal('gasto')}
-            className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-start hover:border-blue-400 transition-all active:scale-95"
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-3">
-              <Receipt size={20} />
+          <button onClick={() => setActiveModal('gasto')} className="flex-1 bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex flex-col items-center hover:border-blue-400 transition-all active:scale-95">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mb-3">
+              <Receipt size={24} />
             </div>
-            <span className="text-[#0B2046] font-bold text-sm">Registrar Gasto</span>
+            <span className="text-[#0B2046] font-bold text-sm mb-1">Registrar Gasto</span>
+            <span className="text-gray-400 text-xs">Variable o extra</span>
           </button>
         </div>
 
-        <Link href="#" className="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mt-2 hover:shadow-md transition-shadow">
+        <Link href="/mis-objetivos" className="block bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mt-2 hover:shadow-md transition-shadow active:scale-95">
           <div className="flex justify-between items-start mb-4">
             <div className="flex gap-3">
-               <div className="w-10 h-10 rounded-xl bg-[#EAFBF6] text-[#00C897] flex items-center justify-center">
-                <Target size={20} />
+               <div className="w-12 h-12 rounded-2xl bg-[#EAFBF6] text-[#00C897] flex items-center justify-center">
+                <Target size={24} />
               </div>
-              <div>
+              <div className="flex flex-col justify-center">
                 <h3 className="text-[#0B2046] font-bold">Meta de Crecimiento</h3>
                 <p className="text-gray-400 text-xs">Objetivo: {data.metaCrecimiento.porcentajeObjetivo}% mensual</p>
               </div>
             </div>
-            <span className="text-[#00C897] text-2xl font-bold">{data.metaCrecimiento.porcentajeActual}%</span>
+            <span className="text-[#00C897] text-2xl font-bold mt-1">{data.metaCrecimiento.porcentajeActual}%</span>
           </div>
-          <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden mb-2">
-            <div 
-              className="bg-[#00C897] h-full rounded-full transition-all duration-1000" 
-              style={{ width: `${(data.metaCrecimiento.porcentajeActual / data.metaCrecimiento.porcentajeObjetivo) * 100}%` }}
-            ></div>
+          <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden mb-3">
+            <div className="bg-[#0B2046] h-full rounded-full" style={{ width: `${Math.min((data.metaCrecimiento.porcentajeActual / data.metaCrecimiento.porcentajeObjetivo) * 100, 100)}%` }}></div>
           </div>
-          <p className="text-gray-500 text-[11px] font-medium">
-            Estás ahorrando ${data.metaCrecimiento.montoAhorrado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
+          <p className="text-gray-500 text-[11px] font-medium">Estás ahorrando ${data.metaCrecimiento.montoAhorrado.toLocaleString('en-US', { minimumFractionDigits: 2 })} de tu dinero libre</p>
         </Link>
 
-        <div className="pt-4 pb-6">
-          <div className="flex justify-between items-end mb-3 px-1">
-            <h3 className="font-bold text-[#0B2046] text-lg">Compromisos Pendientes</h3>
-            <span className="text-gray-400 text-sm">{data.compromisosPendientes.length} gastos</span>
+        <div className="pt-4">
+          <div className="flex justify-between items-end mb-4 px-1">
+            <h3 className="font-bold text-[#0B2046] text-lg">Gastos Registrados</h3>
+            <span className="text-gray-400 text-sm">{data.gastosRegistrados.length} gastos</span>
           </div>
           <div className="space-y-3">
-            {data.compromisosPendientes.map(comp => (
+            {data.gastosRegistrados.length === 0 && (
+               <div className="bg-white rounded-2xl p-6 text-center border border-gray-100">
+                  <p className="text-gray-500 text-sm">No hay gastos vitales o recurrentes registrados.</p>
+               </div>
+            )}
+            {data.gastosRegistrados.map(comp => (
               <div key={comp.id} className="bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${comp.tipo === 'Vital' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
@@ -203,12 +204,16 @@ export default function DashboardScreen() {
                   </div>
                   <div>
                     <p className="text-[#0B2046] font-bold text-sm">{comp.nombre}</p>
-                    <p className="text-gray-400 text-xs">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-gray-400 text-xs">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })} mensual</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[#0B2046] font-bold text-sm">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                  <p className="text-[#00C897] text-[10px] font-bold uppercase">Prorrateado</p>
+                  <p className="text-[#0B2046] font-bold text-sm mb-1">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  {comp.pagado ? (
+                    <span className="bg-[#EAFBF6] text-[#009A74] text-[10px] font-bold px-2 py-0.5 rounded-full">Pagado</span>
+                  ) : (
+                    <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full">Reservado</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -216,97 +221,208 @@ export default function DashboardScreen() {
         </div>
       </div>
 
-     
-      {activeModal === 'gasto' && (
-        <ModalContainer onClose={closeModal} title="Registrar Gasto Variable">
-          <div className="space-y-4">
-            <Input label="¿Qué vas a comprar?" placeholder="Ej. Café, Uber, Cine" value={gastoForm.nombre} onChange={e => setGastoForm({...gastoForm, nombre: e.target.value})} />
-            <div>
-              <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Monto</label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input type="number" inputMode="decimal" placeholder="0.00" className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 outline-none focus:border-[#0B2046] text-lg font-bold text-[#0B2046]"
-                  value={gastoForm.monto} onChange={e => setGastoForm({...gastoForm, monto: e.target.value})} autoFocus />
-              </div>
-            </div>
-
-            {montoGastoNumber > 0 && (
-               <div className="bg-[#F5F3FF] border border-[#8B5CF6]/30 rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2">
-                 <h4 className="text-[#6D28D9] font-bold text-sm mb-2 flex items-center gap-2">
-                   <Zap size={16} /> Impacto en tu mes
-                 </h4>
-                 <div className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                   <div>
-                     <p className="text-xs text-[#6D28D9]">Nuevo Saldo Proyectado:</p>
-                     <p className={`text-xl font-bold ${nuevoSaldoProyectado < 0 ? 'text-red-500' : 'text-[#6D28D9]'}`}>
-                        ${nuevoSaldoProyectado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                     </p>
-                   </div>
-                   {nuevoSaldoProyectado < 0 && (
-                     <span className="text-red-500 text-xs font-bold bg-red-100 px-2 py-1 rounded-full">¡Cuidado! Saldo negativo</span>
-                   )}
-                 </div>
-               </div>
-            )}
-
-            <Button onClick={handleRegistrarGasto} isLoading={isActionLoading} disabled={!gastoForm.nombre || montoGastoNumber <= 0}>Confirmar Gasto</Button>
-          </div>
-        </ModalContainer>
-      )}
 
       {activeModal === 'ingreso' && (
-        <ModalContainer onClose={closeModal} title="Registrar Ingreso Extra">
-           <div className="space-y-6">
-            <p className="text-gray-500 text-sm">Este dinero se sumará a tu Saldo Actual disponible.</p>
-            <div>
-              <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Monto del Ingreso</label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[#00C897]" size={24} />
-                <input type="number" inputMode="decimal" placeholder="0.00" className="w-full bg-[#EAFBF6] border border-[#00C897] rounded-xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[#00C897] text-2xl font-bold text-[#00C897]"
-                  value={ingresoMonto} onChange={e => setIngresoMonto(e.target.value)} autoFocus />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152D4F]/80 p-4">
+          <div className="bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl relative">
+            <button onClick={closeModal} className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            <h2 className="text-[#0B2046] text-xl font-bold mb-1">Ingreso Extra</h2>
+            <p className="text-gray-500 text-sm mb-6">Registra ingresos adicionales a tu salario</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto del Ingreso</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input type="number" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                    value={ingresoMonto} onChange={e => setIngresoMonto(e.target.value)} />
+                </div>
               </div>
+
+              <div className={`border rounded-2xl p-4 flex flex-col transition-colors ${reservarIngreso ? 'bg-[#F5F3FF] border-[#8B5CF6]/30' : 'bg-[#EAFBF6] border-[#00C897]/30'}`}>
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${reservarIngreso ? 'bg-[#8B5CF6]' : 'bg-[#00C897]'}`}></div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-[#0B2046]">Selector Crítico</span>
+                  </div>
+                  <button onClick={() => setReservarIngreso(!reservarIngreso)} className={`w-12 h-6 rounded-full p-1 transition-colors ${reservarIngreso ? 'bg-[#8B5CF6]' : 'bg-[#0B2046]'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${reservarIngreso ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <h4 className="font-bold text-[#0B2046] text-sm flex items-center gap-2 mb-1">
+                  {reservarIngreso ? <Lock size={16} className="text-[#8B5CF6]" /> : <CheckCircle2 size={16} className="text-[#0B2046]" />}
+                  {reservarIngreso ? 'Reservar para siguiente sueldo' : 'Usar en periodo actual'}
+                </h4>
+                <div className={`p-3 rounded-xl flex items-center gap-2 text-xs font-medium mt-2 ${reservarIngreso ? 'bg-[#8B5CF6]/10 text-[#8B5CF6]' : 'bg-[#00C897]/10 text-[#009A74]'}`}>
+                  <Lock size={14} /> 
+                  {reservarIngreso ? 'No afectará tu Saldo Actual hoy' : 'Se sumará a tu saldo disponible inmediatamente'}
+                </div>
+              </div>
+
+              <button onClick={handleIngreso} disabled={!ingresoMonto || isActionLoading} 
+                className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${ingresoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
+                {isActionLoading ? 'Procesando...' : 'Registrar Ingreso'}
+              </button>
             </div>
-            <Button onClick={handleRegistrarIngreso} isLoading={isActionLoading} disabled={parseFloat(ingresoMonto) <= 0} className="bg-[#00C897] hover:bg-[#00b085]">Sumar al Saldo</Button>
           </div>
-        </ModalContainer>
+        </div>
       )}
 
-       {activeModal === 'prueba' && (
-        <ModalContainer onClose={closeModal} title="Simulador de Gasto">
-           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-xl flex gap-3 items-start">
-              <Zap className="text-blue-500 shrink-0" size={24} />
-              <p className="text-blue-800 text-sm">Esta es una simulación. No afectará tu saldo real, pero te diremos si es seguro hacerlo.</p>
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-[#0B2046] mb-1 block">¿Cuánto quieres gastar?</label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
-                <input type="number" inputMode="decimal" placeholder="0.00" className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 outline-none focus:border-[#0B2046] text-2xl font-bold text-[#0B2046]"
-                  value={pruebaMonto} onChange={e => setPruebaMonto(e.target.value)} autoFocus />
+      {activeModal === 'gasto' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152D4F]/80 p-4">
+          <div className="bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl relative">
+            <button onClick={closeModal} className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            <h2 className="text-[#0B2046] text-xl font-bold mb-1">Registrar Gasto</h2>
+            <p className="text-gray-500 text-sm mb-6">Oficializa un gasto y actualiza tu saldo</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Nombre del Gasto</label>
+                <input type="text" placeholder="Ej: Renta, Supermercado..." className="w-full bg-gray-50 rounded-2xl py-3 px-4 outline-none text-[#0B2046] text-sm"
+                  value={gastoNombre} onChange={e => setGastoNombre(e.target.value)} />
               </div>
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto</label>
+                <div className="relative border border-gray-200 rounded-2xl bg-white overflow-hidden">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input type="number" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                    value={gastoMonto} onChange={e => setGastoMonto(e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Categoría</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setGastoCategoria('Vital')} className={`flex-1 py-3 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all ${gastoCategoria === 'Vital' ? 'border-red-400 text-red-500 bg-red-50' : 'border-gray-200 text-gray-500'}`}>
+                    <AlertCircle size={20} /> <span className="text-[11px] font-bold">Vital</span>
+                  </button>
+                  <button onClick={() => setGastoCategoria('Recurrente')} className={`flex-1 py-3 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all ${gastoCategoria === 'Recurrente' ? 'border-blue-400 text-blue-500 bg-blue-50' : 'border-gray-200 text-gray-500'}`}>
+                    <Calendar size={20} /> <span className="text-[11px] font-bold">Recurrente</span>
+                  </button>
+                  <button onClick={() => setGastoCategoria('Variable')} className={`flex-1 py-3 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all ${gastoCategoria === 'Variable' ? 'border-[#8B5CF6] text-[#8B5CF6] bg-[#F5F3FF]' : 'border-gray-200 text-gray-500'}`}>
+                    <Zap size={20} /> <span className="text-[11px] font-bold">Variable</span>
+                  </button>
+                </div>
+              </div>
+
+              {gastoCategoria !== 'Variable' && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Frecuencia del Gasto</label>
+                  <select 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 outline-none text-[#0B2046] text-sm appearance-none"
+                    value={gastoFrecuencia} onChange={(e) => setGastoFrecuencia(e.target.value as 'Semanal'|'Quincenal'|'Mensual')}
+                  >
+                    <option value="Semanal">Semanal</option>
+                    <option value="Quincenal">Quincenal</option>
+                    <option value="Mensual">Mensual</option>
+                  </select>
+                  <p className="text-xs text-blue-500 mt-3 font-medium">
+                     Este gasto se guardará como <strong>Pagado</strong> y se repetirá de forma {gastoFrecuencia.toLowerCase()}.
+                  </p>
+                </div>
+              )}
+
+              {gastoCategoria === 'Variable' && montoGastoParseado > 0 && (
+                <div className="border border-[#8B5CF6]/30 bg-white rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+                  <h4 className="text-[#8B5CF6] font-bold text-sm mb-3 flex items-center gap-2"><Zap size={16} /> Impacto instantáneo</h4>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-gray-500 text-sm">Tu saldo actual:</span>
+                    <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                  </div>
+                  <div className="flex justify-center my-1"><TrendingDown className="text-gray-300" size={16} /></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-sm">Después del gasto:</span>
+                    <span className={`font-bold text-lg ${saldoLibreNuevoGasto < 0 ? 'text-red-500' : 'text-[#0B2046]'}`}>
+                      ${saldoLibreNuevoGasto.toLocaleString('en-US', {minimumFractionDigits:2})}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={handleGasto} disabled={!gastoNombre || !gastoMonto || isActionLoading} 
+                className={`w-full font-bold rounded-2xl py-4 flex justify-center items-center gap-2 transition-colors mt-2 ${gastoNombre && gastoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
+                <CheckCircle2 size={20} /> Confirmar Gasto
+              </button>
             </div>
-            <Button onClick={handlePruebaGasto} isLoading={isActionLoading} disabled={parseFloat(pruebaMonto) <= 0} className="bg-[#0B2046] hover:bg-[#1F3A63]">
-              <Zap size={20} className="mr-2" /> Simular Impacto
-            </Button>
           </div>
-        </ModalContainer>
+        </div>
+      )}
+
+      {activeModal === 'prueba' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152D4F]/80 p-4">
+          <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl relative">
+            
+            <div className="bg-[#0B2046] px-6 pt-6 pb-8 relative">
+              <button onClick={closeModal} className="absolute right-4 top-4 text-white/50 hover:text-white"><X size={24} /></button>
+              <h2 className="text-white text-xl font-bold mb-1">Simulador de Gasto</h2>
+              <p className="text-blue-200 text-sm">Simula una compra antes de realizarla</p>
+            </div>
+
+            <div className="p-6 -mt-4 bg-white rounded-t-[24px] relative space-y-4">
+              
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">¿Qué quieres comprar?</label>
+                <input type="text" placeholder="Ej: Zapatos deportivos" className="w-full bg-gray-50 rounded-2xl py-4 px-4 outline-none text-[#0B2046] text-sm"
+                  value={pruebaNombre} onChange={e => setPruebaNombre(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Precio</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input type="number" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                    value={pruebaMonto} onChange={e => setPruebaMonto(e.target.value)} />
+                </div>
+              </div>
+
+              {!isSimulacionLista ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center text-gray-400">
+                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-2 text-amber-500"><DollarSign size={24} /></div>
+                  <p className="text-xs">Ingresa un nombre y precio para ver el impacto</p>
+                </div>
+              ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                   <div className="w-full h-2 bg-gradient-to-r from-[#00C897] via-yellow-400 to-red-500 rounded-full mt-4 relative">
+                     <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-sm" style={{ left: `${Math.min((montoSimulado / data.saldoActual) * 100, 100)}%` }}></div>
+                   </div>
+
+                   <div className="border border-gray-100 rounded-2xl p-4 shadow-sm">
+                     <div className="flex justify-between items-center mb-1">
+                        <span className="text-gray-500 text-sm">Tu saldo actual:</span>
+                        <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                      </div>
+                      <div className="flex justify-center my-1"><TrendingDown className="text-gray-300" size={16} /></div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 text-sm">Después de la compra:</span>
+                        <span className={`font-bold text-lg ${saldoLibreSimulado < 0 ? 'text-red-500' : 'text-[#0B2046]'}`}>
+                          ${saldoLibreSimulado.toLocaleString('en-US', {minimumFractionDigits:2})}
+                        </span>
+                      </div>
+                   </div>
+
+                   <div className={`border rounded-2xl p-4 flex gap-3 items-start ${pruebaAprobada ? 'border-[#00C897] bg-[#EAFBF6]' : 'border-red-400 bg-red-50'}`}>
+                     <div className={`mt-0.5 ${pruebaAprobada ? 'text-[#00C897]' : 'text-red-500'}`}>
+                       {pruebaAprobada ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                     </div>
+                     <div>
+                       <h4 className={`font-bold text-sm mb-1 ${pruebaAprobada ? 'text-[#009A74]' : 'text-red-700'}`}>
+                         {pruebaAprobada ? 'Compra Segura' : 'Compra Arriesgada'}
+                       </h4>
+                       <p className={`text-xs ${pruebaAprobada ? 'text-[#009A74]/80' : 'text-red-700/80'}`}>
+                         {pruebaAprobada ? 'Esta compra no compromete tus finanzas. Puedes realizarla.' : 'Esta compra supera la mitad de tu dinero libre. Podrías desestabilizar tu mes.'}
+                       </p>
+                     </div>
+                   </div>
+
+                   <button onClick={closeModal} className="w-full bg-[#0B2046] text-white font-bold rounded-2xl py-4 mt-2 hover:bg-[#1F3A63]">
+                     Entendido
+                   </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
     </main>
   );
 }
-
-const ModalContainer = ({ children, onClose, title }: { children: React.ReactNode, onClose: () => void, title: string }) => (
-  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0B2046]/60 backdrop-blur-sm animate-in fade-in duration-200">
-    <div className="bg-white w-full sm:w-[450px] rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 duration-300 relative">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-[#0B2046] text-xl font-bold w-full text-center pl-6">{title}</h2>
-        <button onClick={onClose} className="bg-gray-100 p-2 rounded-full text-gray-400 hover:text-[#0B2046] transition-colors absolute right-6 top-6">
-          <X size={20} />
-        </button>
-      </div>
-      {children}
-    </div>
-  </div>
-);

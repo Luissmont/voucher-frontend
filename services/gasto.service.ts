@@ -2,21 +2,15 @@ import { Gasto } from '../models/gasto.schema';
 
 export const GastoService = {
   async saveGastosIniciales(gastos: Gasto[]): Promise<boolean> {
-    console.log("--- MOCK: ENVIANDO GASTOS A NESTJS ---", gastos);
+    console.log("--- MOCK: GUARDANDO GASTOS INICIALES ---", gastos);
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    console.log("--- MOCK: GASTOS GUARDADOS EXITOSAMENTE ---");
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vaucher_mock_gastos', JSON.stringify(gastos));
+    }
+    
     return true;
 
-    /* // codigo para api
-    try {
-      // mandamos el arreglo completo al endpoint
-      await apiClient.post('/gastos/bulk', { gastos });
-      return true;
-    } catch (error) {
-      throw error;
-    }
-    */
+    
   }
 };
