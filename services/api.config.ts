@@ -12,14 +12,30 @@ export class ApiError extends Error {
 
 export const apiClient = {
   async post<T>(endpoint: string, body: any): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('vaucher_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // se podra insertar el jwt token aqui cuando se implemente la autenticacion (leelo Ali)
-      },
+      headers,
       body: JSON.stringify(body),
     });
+
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('vaucher_token');
+        window.location.href = '/login';
+      }
+      throw new ApiError(401, 'Sesión expirada');
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

@@ -1,29 +1,32 @@
 import { LoginRequest, AuthResponse, RegisterRequest } from '../models/auth.schema';
 
+import { apiClient } from './api.config';
+
 export const AuthService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    if (typeof window !== 'undefined') {
-       localStorage.removeItem('vaucher_mock_config');
-       localStorage.removeItem('vaucher_mock_gastos');
-       localStorage.removeItem('vaucher_mock_reservado');
-       localStorage.removeItem('vaucher_mock_metas_extra'); 
+    const response = await apiClient.post<AuthResponse>('/auth/login', {
+      email: data.email,
+      password: data.password,
+    });
+
+    if (typeof window !== 'undefined' && response.token) {
+      localStorage.setItem('vaucher_token', response.token);
     }
 
-    if (data.email === 'tu@email.com' && data.password === '12345678') {
-      return { token: 'mock-jwt', user: { id: '99', email: data.email } };
-    }
-    throw new Error("401: Credenciales incorrectas"); 
+    return response;
   },
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const response = await apiClient.post<AuthResponse>('/auth/register', {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
 
-    if (typeof window !== 'undefined') {
-       localStorage.clear(); 
+    if (typeof window !== 'undefined' && response.token) {
+      localStorage.setItem('vaucher_token', response.token);
     }
 
-    return { token: 'mock-jwt-new', user: { id: '100', email: data.email } };
+    return response;
   }
 };
