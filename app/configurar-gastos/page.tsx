@@ -9,10 +9,11 @@ import { DollarSign, Plus, X, AlertCircle, Calendar, Trash2 } from 'lucide-react
 
 export default function ConfigurarGastosScreen() {
   const router = useRouter();
-  
+
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const [nombre, setNombre] = useState('');
   const [monto, setMonto] = useState<number | undefined>(undefined);
@@ -54,12 +55,13 @@ export default function ConfigurarGastosScreen() {
   };
 
   const continuarAlDashboard = async () => {
+    setErrorMsg('');
     setIsLoading(true);
     try {
-      await GastoService.saveGastosIniciales(gastos);
-      router.push('/dashboard'); 
-    } catch (error) {
-      alert("Error al guardar los gastos");
+      await GastoService.guardarGastosLote(gastos);
+      router.push('/dashboard');
+    } catch (error: any) {
+      setErrorMsg(error.message || "Error al enviar el lote de gastos");
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +90,7 @@ export default function ConfigurarGastosScreen() {
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in duration-300">
-            
+
             {gastosVitales.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3 px-1">
@@ -121,12 +123,18 @@ export default function ConfigurarGastosScreen() {
       </div>
 
       <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-6">
-        <button 
+        <button
           onClick={abrirModal}
           className="absolute right-6 -top-6 w-14 h-14 bg-[#00C897] hover:bg-[#00b085] rounded-full flex items-center justify-center text-white shadow-lg transition-transform active:scale-95"
         >
           <Plus size={28} />
         </button>
+
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 rounded-xl mb-4 text-center font-medium animate-in fade-in slide-in-from-bottom-2">
+            {errorMsg}
+          </div>
+        )}
 
         <Button onClick={continuarAlDashboard} isLoading={isLoading}>
           Continuar al Dashboard &gt;
@@ -136,7 +144,7 @@ export default function ConfigurarGastosScreen() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0B2046]/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full sm:w-[400px] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 duration-300">
-            
+
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-[#0B2046] text-xl font-bold w-full text-center pl-6">Agregar Gasto</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -145,12 +153,12 @@ export default function ConfigurarGastosScreen() {
             </div>
 
             <div className="space-y-4">
-              
+
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Nombre del gasto</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej: Renta, Netflix, Gym" 
+                <input
+                  type="text"
+                  placeholder="Ej: Renta, Netflix, Gym"
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-[#0B2046]"
                   value={nombre} onChange={(e) => setNombre(e.target.value)}
                 />
@@ -160,8 +168,8 @@ export default function ConfigurarGastosScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Monto</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                  <input 
-                    type="number" inputMode="decimal" placeholder="0.00" 
+                  <input
+                    type="number" inputMode="decimal" placeholder="0.00"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-8 pr-4 outline-none focus:border-[#0B2046]"
                     value={monto || ''} onChange={(e) => setMonto(parseFloat(e.target.value))}
                   />
@@ -171,7 +179,7 @@ export default function ConfigurarGastosScreen() {
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Categoría</label>
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={() => setCategoria('Vital')}
                     className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all
                       ${categoria === 'Vital' ? 'border-red-400 bg-red-50 text-red-600' : 'border-gray-100 bg-white text-gray-400'}`}
@@ -179,7 +187,7 @@ export default function ConfigurarGastosScreen() {
                     <AlertCircle size={24} />
                     <span className="text-sm font-medium">Vital</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => setCategoria('Recurrente')}
                     className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all
                       ${categoria === 'Recurrente' ? 'border-blue-400 bg-blue-50 text-blue-600' : 'border-gray-100 bg-white text-gray-400'}`}
@@ -192,7 +200,7 @@ export default function ConfigurarGastosScreen() {
 
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Frecuencia del Gasto</label>
-                <select 
+                <select
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 outline-none focus:border-[#0B2046] appearance-none"
                   value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as Gasto['frecuencia'])}
                 >
@@ -208,13 +216,13 @@ export default function ConfigurarGastosScreen() {
                   <span className="text-sm font-bold text-[#0B2046]">¿Ya pagaste esto este mes?</span>
                   <span className="text-xs text-gray-500">Solo para configuración inicial</span>
                 </div>
-                <button 
+                <button
                   onClick={() => setPagado(!pagado)}
                   className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative
                     ${pagado ? 'bg-[#00C897]' : 'bg-gray-300'}`}
                 >
                   <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-200
-                    ${pagado ? 'translate-x-6' : 'translate-x-0'}`} 
+                    ${pagado ? 'translate-x-6' : 'translate-x-0'}`}
                   />
                 </button>
               </div>
@@ -235,7 +243,7 @@ export default function ConfigurarGastosScreen() {
 
 const GastoCard = ({ gasto, onEliminar, colorType }: { gasto: Gasto, onEliminar: (id: string) => void, colorType: 'vital' | 'recurrente' }) => {
   const isVital = colorType === 'vital';
-  
+
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
       <div className="flex items-center gap-4">

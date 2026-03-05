@@ -9,7 +9,7 @@ import { Calendar, DollarSign, ChevronRight } from 'lucide-react';
 
 export default function ConfiguracionScreen() {
   const router = useRouter();
-  
+
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,13 +32,17 @@ export default function ConfiguracionScreen() {
     }
   };
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   const handleNext = async () => {
     if (step < 5) {
       setStep(step + 1);
+      setErrorMsg(''); // Limpiar errores al cambiar de paso
     } else {
+      setErrorMsg('');
       const validation = InitialConfigSchema.safeParse(formData);
       if (!validation.success) {
-        alert("Por favor revisa que todos los campos sean correctos.");
+        setErrorMsg("Por favor revisa que todos los campos sean correctos.");
         return;
       }
 
@@ -46,8 +50,8 @@ export default function ConfiguracionScreen() {
       try {
         await ConfigService.saveInitialConfig(validation.data);
         router.push('/configurar-gastos');
-      } catch (error) {
-        alert("Error al guardar la configuración");
+      } catch (error: any) {
+        setErrorMsg(error.message || "Error al guardar la configuración");
       } finally {
         setIsLoading(false);
       }
@@ -76,7 +80,7 @@ export default function ConfiguracionScreen() {
             </div>
             {index < 4 && (
               <div className={`flex-1 h-0.5 mx-2 transition-colors
-                ${step > num ? 'bg-[#00C897]' : 'bg-gray-200'}`} 
+                ${step > num ? 'bg-[#00C897]' : 'bg-gray-200'}`}
               />
             )}
           </React.Fragment>
@@ -84,7 +88,7 @@ export default function ConfiguracionScreen() {
       </div>
 
       <div className="flex-1 px-6 pt-8 pb-6 flex flex-col">
-        
+
         {step === 1 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-[#0B2046] text-lg font-bold mb-2">Salario Neto</h2>
@@ -92,7 +96,7 @@ export default function ConfiguracionScreen() {
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto</label>
             <div className="relative">
               <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
+              <input
                 type="number"
                 inputMode="decimal"
                 className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897]"
@@ -109,7 +113,7 @@ export default function ConfiguracionScreen() {
             <h2 className="text-[#0B2046] text-lg font-bold mb-2">Frecuencia de Pago</h2>
             <p className="text-gray-500 text-sm mb-6">¿Con qué frecuencia recibes tu salario?</p>
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Selecciona</label>
-            <select 
+            <select
               className="w-full bg-gray-50 rounded-xl py-4 px-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897] appearance-none"
               value={formData.frecuencia || ""}
               onChange={(e) => setFormData({ ...formData, frecuencia: e.target.value as InitialConfig['frecuencia'] })}
@@ -129,7 +133,7 @@ export default function ConfiguracionScreen() {
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Día del mes</label>
             <div className="relative">
               <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
+              <input
                 type="number"
                 inputMode="numeric"
                 className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897]"
@@ -151,7 +155,7 @@ export default function ConfiguracionScreen() {
             <p className="text-blue-100 text-sm mb-8">¿Cuánto dinero tienes disponible en tu cuenta bancaria ahora mismo?</p>
             <div className="relative">
               <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20} />
-              <input 
+              <input
                 type="number"
                 inputMode="decimal"
                 className="w-full bg-[#1F3A63] border border-[#2C4A7C] rounded-xl py-4 pl-12 pr-4 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-[#00C897]"
@@ -176,7 +180,7 @@ export default function ConfiguracionScreen() {
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Ahorro del ciclo anterior</label>
             <div className="relative mb-4">
               <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0B2046]/50" size={20} />
-              <input 
+              <input
                 type="number"
                 inputMode="decimal"
                 className="w-full bg-white border border-[#A6E8D7] rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-bold text-lg outline-none focus:ring-2 focus:ring-[#00C897]"
@@ -189,10 +193,16 @@ export default function ConfiguracionScreen() {
           </div>
         )}
 
-        <div className="mt-auto pt-6">
-          <Button 
-            onClick={handleNext} 
-            disabled={!isStepValid()} 
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 rounded-xl mt-4 mb-2 text-center font-medium animate-in fade-in slide-in-from-bottom-2">
+            {errorMsg}
+          </div>
+        )}
+
+        <div className="mt-auto pt-4">
+          <Button
+            onClick={handleNext}
+            disabled={!isStepValid()}
             isLoading={isLoading}
             className={!isStepValid() ? "bg-gray-200 text-gray-400 hover:bg-gray-200" : ""}
           >

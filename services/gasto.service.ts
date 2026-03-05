@@ -1,16 +1,13 @@
 import { Gasto } from '../models/gasto.schema';
+import { apiClient } from './api.config';
 
 export const GastoService = {
-  async saveGastosIniciales(gastos: Gasto[]): Promise<boolean> {
-    console.log("--- MOCK: GUARDANDO GASTOS INICIALES ---", gastos);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('vaucher_mock_gastos', JSON.stringify(gastos));
+  async guardarGastosLote(gastos: Gasto[]): Promise<boolean> {
+    try {
+      await apiClient.post('/gastos/lote', gastos);
+      return true;
+    } catch (error) {
+      throw error;
     }
-    
-    return true;
-
-    
   }
 };
