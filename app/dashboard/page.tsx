@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardService } from '@/services/dashboard.service';
 import { DashboardData } from '@/models/dashboard.schema';
-import { 
-  Settings, Target, Zap, Plus, Receipt, 
+import {
+  Settings, Target, Zap, Plus, Receipt,
   AlertCircle, Calendar, X, DollarSign, Lock,
   TrendingDown, CheckCircle2
 } from 'lucide-react';
@@ -28,16 +28,18 @@ export default function DashboardScreen() {
   const [pruebaNombre, setPruebaNombre] = useState('');
   const [pruebaMonto, setPruebaMonto] = useState('');
 
-  const fechaHoy = new Intl.DateTimeFormat('es-ES', { 
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
+  const fechaHoy = new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
 
   const loadDashboardData = async () => {
+    setIsLoading(true);
     try {
       const resumen = await DashboardService.getResumen();
       setData(resumen);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error cargando dashboard", error);
+      alert(error.message || "Error al cargar la información del dashboard.");
     } finally {
       setIsLoading(false);
     }
@@ -55,21 +57,33 @@ export default function DashboardScreen() {
 
   const handleIngreso = async () => {
     setIsActionLoading(true);
-    await DashboardService.registrarIngresoExtra({ monto: parseFloat(ingresoMonto), reservar: reservarIngreso });
-    await loadDashboardData();
-    closeModal();
+    try {
+      await DashboardService.registrarIngresoExtra({ monto: parseFloat(ingresoMonto), reservar: reservarIngreso });
+      await loadDashboardData();
+      closeModal();
+    } catch (error: any) {
+      alert(error.message || "Error al registrar ingreso extra");
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handleGasto = async () => {
     setIsActionLoading(true);
-    await DashboardService.registrarGasto({ 
-      nombre: gastoNombre, 
-      monto: parseFloat(gastoMonto), 
-      categoria: gastoCategoria,
-      frecuencia: gastoCategoria !== 'Variable' ? gastoFrecuencia : undefined 
-    });
-    await loadDashboardData();
-    closeModal();
+    try {
+      await DashboardService.registrarGasto({
+        nombre: gastoNombre,
+        monto: parseFloat(gastoMonto),
+        categoria: gastoCategoria,
+        frecuencia: gastoCategoria !== 'Variable' ? gastoFrecuencia : undefined
+      });
+      await loadDashboardData();
+      closeModal();
+    } catch (error: any) {
+      alert(error.message || "Error al registrar gasto");
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   if (isLoading || !data) {
@@ -82,16 +96,16 @@ export default function DashboardScreen() {
 
   const montoGastoParseado = parseFloat(gastoMonto) || 0;
   const saldoLibreNuevoGasto = data.saldoActual - montoGastoParseado;
-  
+
   const montoSimulado = parseFloat(pruebaMonto) || 0;
   const isSimulacionLista = pruebaNombre.trim().length > 0 && montoSimulado > 0;
   const saldoLibreSimulado = data.saldoActual - montoSimulado;
-  
+
   const pruebaAprobada = montoSimulado <= (data.saldoActual * 0.5);
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] relative font-sans pb-10">
-      
+
       <div className="absolute top-0 w-full h-[380px] bg-[#152D4F] rounded-b-[40px] z-0"></div>
 
       <header className="relative z-10 flex justify-between items-start px-6 pt-12 mb-6">
@@ -105,9 +119,9 @@ export default function DashboardScreen() {
       </header>
 
       <div className="relative z-10 px-6 space-y-4">
-        
+
         <div className="bg-[#1F3A63] border border-[#2C4A7C]/50 rounded-[24px] p-6 shadow-xl text-white">
-           <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2">
             <Target size={16} className="text-[#00C897]" />
             <span className="text-sm font-medium opacity-90">Saldo Actual</span>
           </div>
@@ -115,9 +129,9 @@ export default function DashboardScreen() {
             ${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </h2>
           <p className="text-blue-200 text-xs mb-6 opacity-80">Disponible para gastar hoy</p>
-          
+
           <div className="h-px w-full bg-[#2C4A7C]/80 mb-4"></div>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-blue-100 text-sm">Saldo Total</span>
@@ -142,7 +156,7 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={() => setActiveModal('prueba')}
           className="w-full bg-[#00C897] hover:bg-[#00b085] text-white font-bold text-lg rounded-2xl py-4 flex justify-center items-center gap-2 shadow-lg shadow-[#00C897]/20 transition-transform active:scale-95"
         >
@@ -169,7 +183,7 @@ export default function DashboardScreen() {
         <Link href="/mis-objetivos" className="block bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mt-2 hover:shadow-md transition-shadow active:scale-95">
           <div className="flex justify-between items-start mb-4">
             <div className="flex gap-3">
-               <div className="w-12 h-12 rounded-2xl bg-[#EAFBF6] text-[#00C897] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-[#EAFBF6] text-[#00C897] flex items-center justify-center">
                 <Target size={24} />
               </div>
               <div className="flex flex-col justify-center">
@@ -192,9 +206,9 @@ export default function DashboardScreen() {
           </div>
           <div className="space-y-3">
             {data.gastosRegistrados.length === 0 && (
-               <div className="bg-white rounded-2xl p-6 text-center border border-gray-100">
-                  <p className="text-gray-500 text-sm">No hay gastos vitales o recurrentes registrados.</p>
-               </div>
+              <div className="bg-white rounded-2xl p-6 text-center border border-gray-100">
+                <p className="text-gray-500 text-sm">No hay gastos vitales o recurrentes registrados.</p>
+              </div>
             )}
             {data.gastosRegistrados.map(comp => (
               <div key={comp.id} className="bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm border border-gray-100">
@@ -228,7 +242,7 @@ export default function DashboardScreen() {
             <button onClick={closeModal} className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"><X size={24} /></button>
             <h2 className="text-[#0B2046] text-xl font-bold mb-1">Ingreso Extra</h2>
             <p className="text-gray-500 text-sm mb-6">Registra ingresos adicionales a tu salario</p>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto del Ingreso</label>
@@ -254,12 +268,12 @@ export default function DashboardScreen() {
                   {reservarIngreso ? 'Reservar para siguiente sueldo' : 'Usar en periodo actual'}
                 </h4>
                 <div className={`p-3 rounded-xl flex items-center gap-2 text-xs font-medium mt-2 ${reservarIngreso ? 'bg-[#8B5CF6]/10 text-[#8B5CF6]' : 'bg-[#00C897]/10 text-[#009A74]'}`}>
-                  <Lock size={14} /> 
+                  <Lock size={14} />
                   {reservarIngreso ? 'No afectará tu Saldo Actual hoy' : 'Se sumará a tu saldo disponible inmediatamente'}
                 </div>
               </div>
 
-              <button onClick={handleIngreso} disabled={!ingresoMonto || isActionLoading} 
+              <button onClick={handleIngreso} disabled={!ingresoMonto || isActionLoading}
                 className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${ingresoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
                 {isActionLoading ? 'Procesando...' : 'Registrar Ingreso'}
               </button>
@@ -308,16 +322,16 @@ export default function DashboardScreen() {
               {gastoCategoria !== 'Variable' && (
                 <div className="animate-in fade-in slide-in-from-top-2">
                   <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Frecuencia del Gasto</label>
-                  <select 
+                  <select
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 outline-none text-[#0B2046] text-sm appearance-none"
-                    value={gastoFrecuencia} onChange={(e) => setGastoFrecuencia(e.target.value as 'Semanal'|'Quincenal'|'Mensual')}
+                    value={gastoFrecuencia} onChange={(e) => setGastoFrecuencia(e.target.value as 'Semanal' | 'Quincenal' | 'Mensual')}
                   >
                     <option value="Semanal">Semanal</option>
                     <option value="Quincenal">Quincenal</option>
                     <option value="Mensual">Mensual</option>
                   </select>
                   <p className="text-xs text-blue-500 mt-3 font-medium">
-                     Este gasto se guardará como <strong>Pagado</strong> y se repetirá de forma {gastoFrecuencia.toLowerCase()}.
+                    Este gasto se guardará como <strong>Pagado</strong> y se repetirá de forma {gastoFrecuencia.toLowerCase()}.
                   </p>
                 </div>
               )}
@@ -327,19 +341,19 @@ export default function DashboardScreen() {
                   <h4 className="text-[#8B5CF6] font-bold text-sm mb-3 flex items-center gap-2"><Zap size={16} /> Impacto instantáneo</h4>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-gray-500 text-sm">Tu saldo actual:</span>
-                    <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                    <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-center my-1"><TrendingDown className="text-gray-300" size={16} /></div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Después del gasto:</span>
                     <span className={`font-bold text-lg ${saldoLibreNuevoGasto < 0 ? 'text-red-500' : 'text-[#0B2046]'}`}>
-                      ${saldoLibreNuevoGasto.toLocaleString('en-US', {minimumFractionDigits:2})}
+                      ${saldoLibreNuevoGasto.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
               )}
 
-              <button onClick={handleGasto} disabled={!gastoNombre || !gastoMonto || isActionLoading} 
+              <button onClick={handleGasto} disabled={!gastoNombre || !gastoMonto || isActionLoading}
                 className={`w-full font-bold rounded-2xl py-4 flex justify-center items-center gap-2 transition-colors mt-2 ${gastoNombre && gastoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
                 <CheckCircle2 size={20} /> Confirmar Gasto
               </button>
@@ -351,7 +365,7 @@ export default function DashboardScreen() {
       {activeModal === 'prueba' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152D4F]/80 p-4">
           <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl relative">
-            
+
             <div className="bg-[#0B2046] px-6 pt-6 pb-8 relative">
               <button onClick={closeModal} className="absolute right-4 top-4 text-white/50 hover:text-white"><X size={24} /></button>
               <h2 className="text-white text-xl font-bold mb-1">Simulador de Gasto</h2>
@@ -359,7 +373,7 @@ export default function DashboardScreen() {
             </div>
 
             <div className="p-6 -mt-4 bg-white rounded-t-[24px] relative space-y-4">
-              
+
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">¿Qué quieres comprar?</label>
                 <input type="text" placeholder="Ej: Zapatos deportivos" className="w-full bg-gray-50 rounded-2xl py-4 px-4 outline-none text-[#0B2046] text-sm"
@@ -381,41 +395,41 @@ export default function DashboardScreen() {
                 </div>
               ) : (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                   <div className="w-full h-2 bg-gradient-to-r from-[#00C897] via-yellow-400 to-red-500 rounded-full mt-4 relative">
-                     <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-sm" style={{ left: `${Math.min((montoSimulado / data.saldoActual) * 100, 100)}%` }}></div>
-                   </div>
+                  <div className="w-full h-2 bg-gradient-to-r from-[#00C897] via-yellow-400 to-red-500 rounded-full mt-4 relative">
+                    <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-sm" style={{ left: `${Math.min((montoSimulado / data.saldoActual) * 100, 100)}%` }}></div>
+                  </div>
 
-                   <div className="border border-gray-100 rounded-2xl p-4 shadow-sm">
-                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-500 text-sm">Tu saldo actual:</span>
-                        <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
-                      </div>
-                      <div className="flex justify-center my-1"><TrendingDown className="text-gray-300" size={16} /></div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-500 text-sm">Después de la compra:</span>
-                        <span className={`font-bold text-lg ${saldoLibreSimulado < 0 ? 'text-red-500' : 'text-[#0B2046]'}`}>
-                          ${saldoLibreSimulado.toLocaleString('en-US', {minimumFractionDigits:2})}
-                        </span>
-                      </div>
-                   </div>
+                  <div className="border border-gray-100 rounded-2xl p-4 shadow-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-gray-500 text-sm">Tu saldo actual:</span>
+                      <span className="font-bold text-[#0B2046]">${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-center my-1"><TrendingDown className="text-gray-300" size={16} /></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-sm">Después de la compra:</span>
+                      <span className={`font-bold text-lg ${saldoLibreSimulado < 0 ? 'text-red-500' : 'text-[#0B2046]'}`}>
+                        ${saldoLibreSimulado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
 
-                   <div className={`border rounded-2xl p-4 flex gap-3 items-start ${pruebaAprobada ? 'border-[#00C897] bg-[#EAFBF6]' : 'border-red-400 bg-red-50'}`}>
-                     <div className={`mt-0.5 ${pruebaAprobada ? 'text-[#00C897]' : 'text-red-500'}`}>
-                       {pruebaAprobada ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-                     </div>
-                     <div>
-                       <h4 className={`font-bold text-sm mb-1 ${pruebaAprobada ? 'text-[#009A74]' : 'text-red-700'}`}>
-                         {pruebaAprobada ? 'Compra Segura' : 'Compra Arriesgada'}
-                       </h4>
-                       <p className={`text-xs ${pruebaAprobada ? 'text-[#009A74]/80' : 'text-red-700/80'}`}>
-                         {pruebaAprobada ? 'Esta compra no compromete tus finanzas. Puedes realizarla.' : 'Esta compra supera la mitad de tu dinero libre. Podrías desestabilizar tu mes.'}
-                       </p>
-                     </div>
-                   </div>
+                  <div className={`border rounded-2xl p-4 flex gap-3 items-start ${pruebaAprobada ? 'border-[#00C897] bg-[#EAFBF6]' : 'border-red-400 bg-red-50'}`}>
+                    <div className={`mt-0.5 ${pruebaAprobada ? 'text-[#00C897]' : 'text-red-500'}`}>
+                      {pruebaAprobada ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                    </div>
+                    <div>
+                      <h4 className={`font-bold text-sm mb-1 ${pruebaAprobada ? 'text-[#009A74]' : 'text-red-700'}`}>
+                        {pruebaAprobada ? 'Compra Segura' : 'Compra Arriesgada'}
+                      </h4>
+                      <p className={`text-xs ${pruebaAprobada ? 'text-[#009A74]/80' : 'text-red-700/80'}`}>
+                        {pruebaAprobada ? 'Esta compra no compromete tus finanzas. Puedes realizarla.' : 'Esta compra supera la mitad de tu dinero libre. Podrías desestabilizar tu mes.'}
+                      </p>
+                    </div>
+                  </div>
 
-                   <button onClick={closeModal} className="w-full bg-[#0B2046] text-white font-bold rounded-2xl py-4 mt-2 hover:bg-[#1F3A63]">
-                     Entendido
-                   </button>
+                  <button onClick={closeModal} className="w-full bg-[#0B2046] text-white font-bold rounded-2xl py-4 mt-2 hover:bg-[#1F3A63]">
+                    Entendido
+                  </button>
                 </div>
               )}
             </div>

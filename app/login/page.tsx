@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { AuthService } from '@/services/auth.service';
+import { DashboardService } from '@/services/dashboard.service';
 import { LoginRequestSchema } from '@/models/auth.schema';
 import { Eye, EyeOff, ChevronLeft } from 'lucide-react';
 
@@ -34,7 +35,16 @@ export default function LoginScreen() {
       const response = await AuthService.login(validation.data);
       console.log("Login exitoso, token:", response.token);
 
-      router.push('/configuracion');
+      try {
+        await DashboardService.getResumen();
+        router.push('/dashboard');
+      } catch (dashError: any) {
+        if (dashError?.status === 404) {
+          router.push('/configuracion');
+        } else {
+          router.push('/dashboard');
+        }
+      }
 
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocurrió un error inesperado');

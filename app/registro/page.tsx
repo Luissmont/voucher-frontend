@@ -44,7 +44,7 @@ export default function RegisterScreen() {
       const response = await AuthService.register(validation.data);
       console.log("Registro exitoso, token:", response.token);
 
-      router.push('/dashboard');
+      router.push('/configuracion');
 
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocurrió un error inesperado');
