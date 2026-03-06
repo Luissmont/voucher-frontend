@@ -78,5 +78,70 @@ export const apiClient = {
     }
 
     return response.json();
+  },
+
+  async delete(endpoint: string): Promise<void> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('vaucher_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (response.status === 401) {
+      if (typeof window !== 'undefined' && !endpoint.startsWith('/auth/')) {
+        localStorage.removeItem('vaucher_token');
+        window.location.href = '/login';
+      }
+      throw new ApiError(401, 'Sesión expirada');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(response.status, errorData.message || 'Error desconocido en la API');
+    }
+  },
+
+  async patch<T>(endpoint: string, body: any): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('vaucher_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 401) {
+      if (typeof window !== 'undefined' && !endpoint.startsWith('/auth/')) {
+        localStorage.removeItem('vaucher_token');
+        window.location.href = '/login';
+      }
+      throw new ApiError(401, 'Sesión expirada');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(response.status, errorData.message || 'Error desconocido en la API');
+    }
+
+    return response.json();
   }
 };

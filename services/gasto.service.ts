@@ -9,5 +9,14 @@ export const GastoService = {
     } catch (error) {
       throw error;
     }
-  }
+  },
+
+  async getGastosFijos(): Promise<any[]> {
+    const todos = await apiClient.get<any[]>('/gastos');
+    return todos.filter((g: any) => !g.canceladoParaElFuturo);
+  },
+
+  async eliminarGastoFijo(id: string): Promise<void> {
+    await apiClient.delete(`/gastos/${id}`);
+  },
 };

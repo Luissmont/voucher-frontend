@@ -3,68 +3,81 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardService } from '@/services/dashboard.service';
+import { MetaService, Meta } from '@/services/meta.service';
+import { ConfigService } from '@/services/config.service';
 import { ChevronLeft, Medal, DollarSign, Target, Trash2, Plus, Lock, X } from 'lucide-react';
-
-type MetaPropia = { id: string; nombre: string; acumulado: number; objetivo: number };
 
 export default function MisObjetivosScreen() {
   const [loading, setLoading] = useState(true);
-  
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
   const [ahorroBase, setAhorroBase] = useState(0);
   const [metaObjetivo, setMetaObjetivo] = useState(0);
   const [montoAhorradoActual, setMontoAhorradoActual] = useState(0);
   const [porcentajeGeneral, setPorcentajeGeneral] = useState(0);
 
-  const [metas, setMetas] = useState<MetaPropia[]>([]);
+  const [metas, setMetas] = useState<Meta[]>([]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [metaToDelete, setMetaToDelete] = useState<string | null>(null);
+  const [isAsignarModalOpen, setIsAsignarModalOpen] = useState(false);
+  const [metaToAsignar, setMetaToAsignar] = useState<Meta | null>(null);
+  const [montoAsignar, setMontoAsignar] = useState('');
+
+  const [diaInicio, setDiaInicio] = useState<number | null>(null);
+  const esDiaDeCiclo = diaInicio !== null && new Date().getDate() === diaInicio;
 
   const [nuevaMetaNombre, setNuevaMetaNombre] = useState('');
   const [nuevaMetaMonto, setNuevaMetaMonto] = useState('');
 
-  useEffect(() => {
-    const loadData = async () => {
-      const resumen = await DashboardService.getResumen();
-      const configStr = localStorage.getItem('vaucher_mock_config');
-      const base = configStr ? JSON.parse(configStr).ahorroHistorico || 0 : 0;
-      
-      const objetivo = base > 0 ? base * 1.23 : 1000;
+  const loadData = async () => {
+    try {
+      const [resumen, metasData, config] = await Promise.all([
+        DashboardService.getResumen(),
+        MetaService.getMetas(),
+        ConfigService.getConfig(),
+      ]);
 
-      setAhorroBase(base);
+      const ahorroHistorico = config.ahorroHistorico ?? 0;
+      const objetivo = ahorroHistorico > 0 ? ahorroHistorico * 1.23 : 1000;
+
+      setAhorroBase(ahorroHistorico);
       setMetaObjetivo(objetivo);
       setMontoAhorradoActual(resumen.metaCrecimiento.montoAhorrado);
       setPorcentajeGeneral(resumen.metaCrecimiento.porcentajeActual);
-      
-      const metasGuardadas = localStorage.getItem('vaucher_mock_metas_extra');
-      if (metasGuardadas) {
-        setMetas(JSON.parse(metasGuardadas));
-      }
-
+      setMetas(metasData);
+      setDiaInicio(config.diaInicio);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al cargar los datos');
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
-  const handleCrearMeta = () => {
+  const handleCrearMeta = async () => {
     if (!nuevaMetaNombre || !nuevaMetaMonto) return;
-    
-    const nueva = { 
-      id: Math.random().toString(), 
-      nombre: nuevaMetaNombre, 
-      acumulado: 0, 
-      objetivo: parseFloat(nuevaMetaMonto) 
-    };
-    
-    const nuevasMetas = [...metas, nueva];
-    setMetas(nuevasMetas);
-    
-    localStorage.setItem('vaucher_mock_metas_extra', JSON.stringify(nuevasMetas));
-
-    setIsCreateModalOpen(false);
-    setNuevaMetaNombre('');
-    setNuevaMetaMonto('');
+    setIsActionLoading(true);
+    setErrorMsg('');
+    try {
+      await MetaService.crearMeta({
+        nombre: nuevaMetaNombre,
+        objetivo: parseFloat(nuevaMetaMonto),
+      });
+      setIsCreateModalOpen(false);
+      setNuevaMetaNombre('');
+      setNuevaMetaMonto('');
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al crear la meta');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const abrirConfirmacionBorrar = (id: string) => {
@@ -72,22 +85,52 @@ export default function MisObjetivosScreen() {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmarBorrado = () => {
-    if (metaToDelete) {
-      const nuevasMetas = metas.filter(m => m.id !== metaToDelete);
-      setMetas(nuevasMetas);
-      localStorage.setItem('vaucher_mock_metas_extra', JSON.stringify(nuevasMetas));
+  const confirmarBorrado = async () => {
+    if (!metaToDelete) return;
+    setIsActionLoading(true);
+    setErrorMsg('');
+    try {
+      await MetaService.eliminarMeta(metaToDelete);
+      setIsDeleteModalOpen(false);
+      setMetaToDelete(null);
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al eliminar la meta');
+      setIsDeleteModalOpen(false);
+    } finally {
+      setIsActionLoading(false);
     }
-    setIsDeleteModalOpen(false);
-    setMetaToDelete(null);
+  };
+
+  const handleAsignarFondos = async () => {
+    if (!metaToAsignar || !montoAsignar) return;
+    setIsActionLoading(true);
+    setErrorMsg('');
+    try {
+      await MetaService.asignarFondos(metaToAsignar.id, parseFloat(montoAsignar));
+      setIsAsignarModalOpen(false);
+      setMetaToAsignar(null);
+      setMontoAsignar('');
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al asignar fondos');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-[#F8FAFC]"></div>;
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] relative font-sans pb-24">
-      
+
       <div className="absolute top-0 w-full h-[320px] bg-[#152D4F] z-0"></div>
+
+      {errorMsg && (
+        <div className="fixed top-4 left-4 right-4 z-50 bg-red-500 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-lg text-center">
+          {errorMsg}
+        </div>
+      )}
 
       <header className="relative z-10 pt-10 px-6 mb-6">
         <Link href="/dashboard" className="text-white inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity mb-4">
@@ -98,7 +141,7 @@ export default function MisObjetivosScreen() {
       </header>
 
       <div className="relative z-10 px-6 space-y-4">
-        
+
         <div className="bg-[#00C897] rounded-[24px] p-6 shadow-lg text-white">
           <div className="flex justify-between items-start mb-4">
             <div className="flex gap-4 items-center">
@@ -107,16 +150,16 @@ export default function MisObjetivosScreen() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">
-                   {porcentajeGeneral >= 100 ? "¡Meta Alcanzada!" : "Meta en Progreso"}
+                  {porcentajeGeneral >= 100 ? "¡Meta Alcanzada!" : "Meta en Progreso"}
                 </h2>
                 <p className="text-sm font-medium opacity-90 mt-1">
-                  🎯 Objetivo: ${metaObjetivo.toLocaleString('en-US', {minimumFractionDigits: 2})} (+23%)
+                  🎯 Objetivo: ${metaObjetivo.toLocaleString('en-US', { minimumFractionDigits: 2 })} (+23%)
                 </p>
               </div>
             </div>
             <span className="text-3xl font-bold">{porcentajeGeneral}%</span>
           </div>
-          
+
           <div className="w-full bg-white/20 h-3 rounded-full overflow-hidden mb-6">
             <div className="bg-white h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(porcentajeGeneral, 100)}%` }}></div>
           </div>
@@ -124,11 +167,11 @@ export default function MisObjetivosScreen() {
           <div className="flex gap-3">
             <div className="flex-1 bg-white/10 rounded-xl p-3">
               <p className="text-xs font-medium opacity-80 mb-1">Ahorro Base</p>
-              <p className="font-bold">${ahorroBase.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+              <p className="font-bold">${ahorroBase.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="flex-1 bg-white/10 rounded-xl p-3">
               <p className="text-xs font-medium opacity-80 mb-1">Total Actual</p>
-              <p className="font-bold">${montoAhorradoActual.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+              <p className="font-bold">${montoAhorradoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
           </div>
         </div>
@@ -136,7 +179,7 @@ export default function MisObjetivosScreen() {
         <div className="bg-white border border-gray-100 rounded-[24px] p-6 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[#0B2046] font-semibold text-sm mb-1">Fondo de Ahorro General</p>
-            <h3 className="text-[#00C897] text-3xl font-bold mb-2">${montoAhorradoActual.toLocaleString('en-US', {minimumFractionDigits: 2})}</h3>
+            <h3 className="text-[#00C897] text-3xl font-bold mb-2">${montoAhorradoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
             <p className="text-xs text-gray-500 flex items-center gap-1.5 font-medium">
               <Lock size={12} className="text-[#D97706]" /> Las asignaciones se habilitarán al final del ciclo
             </p>
@@ -154,12 +197,12 @@ export default function MisObjetivosScreen() {
 
           <div className="space-y-4">
             {metas.length === 0 ? (
-               <div className="bg-gray-50 rounded-2xl p-8 flex flex-col items-center justify-center border border-gray-100">
-                 <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-3">
-                   <Target className="text-gray-400" size={24} />
-                 </div>
-                 <p className="text-[#0B2046] font-bold">Sin metas aún</p>
-                 <p className="text-gray-500 text-sm">Crea tu primera meta de ahorro</p>
+              <div className="bg-gray-50 rounded-2xl p-8 flex flex-col items-center justify-center border border-gray-100">
+                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-3">
+                  <Target className="text-gray-400" size={24} />
+                </div>
+                <p className="text-[#0B2046] font-bold">Sin metas aún</p>
+                <p className="text-gray-500 text-sm">Crea tu primera meta de ahorro</p>
               </div>
             ) : (
               metas.map(meta => {
@@ -190,8 +233,16 @@ export default function MisObjetivosScreen() {
                       <div className="bg-[#00C897] h-full rounded-full" style={{ width: `${porcentaje}%` }}></div>
                     </div>
 
-                    <button disabled className="w-full bg-gray-100 text-gray-400 font-bold rounded-xl py-3 flex justify-center items-center gap-2 text-sm">
-                      <Lock size={16} /> Bloqueado hasta fin de ciclo
+                    <button
+                      onClick={esDiaDeCiclo ? () => { setMetaToAsignar(meta); setIsAsignarModalOpen(true); } : undefined}
+                      disabled={!esDiaDeCiclo}
+                      className={`w-full font-bold rounded-xl py-3 flex justify-center items-center gap-2 text-sm transition-colors ${esDiaDeCiclo
+                        ? 'bg-[#00C897] text-white hover:bg-[#00b085]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                    >
+                      {esDiaDeCiclo ? <DollarSign size={16} /> : <Lock size={16} />}
+                      {esDiaDeCiclo ? 'Asignar Fondos' : 'Disponible el día de ciclo'}
                     </button>
                   </div>
                 );
@@ -224,7 +275,7 @@ export default function MisObjetivosScreen() {
                     value={nuevaMetaMonto} onChange={e => setNuevaMetaMonto(e.target.value)} />
                 </div>
               </div>
-              <button onClick={handleCrearMeta} disabled={!nuevaMetaNombre || !nuevaMetaMonto} 
+              <button onClick={handleCrearMeta} disabled={!nuevaMetaNombre || !nuevaMetaMonto}
                 className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${nuevaMetaNombre && nuevaMetaMonto ? 'bg-[#00C897] text-white hover:bg-[#00b085]' : 'bg-gray-100 text-gray-400'}`}>
                 Crear Meta
               </button>
@@ -246,6 +297,30 @@ export default function MisObjetivosScreen() {
               </button>
               <button onClick={() => setIsDeleteModalOpen(false)} className="w-full bg-white border border-gray-200 text-[#0B2046] font-bold rounded-2xl py-3 hover:bg-gray-50 transition-colors">
                 Conservar Meta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAsignarModalOpen && metaToAsignar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#152D4F]/80 p-4">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative">
+            <button onClick={() => { setIsAsignarModalOpen(false); setMontoAsignar(''); }} className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            <h2 className="text-[#0B2046] text-xl font-bold mb-1 text-center pt-2">Asignar Fondos</h2>
+            <p className="text-gray-500 text-sm text-center mb-6">Meta: <span className="font-semibold text-[#0B2046]">{metaToAsignar.nombre}</span></p>
+            <div className="space-y-5">
+              <div>
+                <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto a Asignar</label>
+                <div className="relative border border-gray-200 rounded-2xl bg-white overflow-hidden">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input type="number" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                    value={montoAsignar} onChange={e => setMontoAsignar(e.target.value)} />
+                </div>
+              </div>
+              <button onClick={handleAsignarFondos} disabled={!montoAsignar || isActionLoading}
+                className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${montoAsignar && !isActionLoading ? 'bg-[#00C897] text-white hover:bg-[#00b085]' : 'bg-gray-100 text-gray-400'}`}>
+                {isActionLoading ? 'Asignando...' : 'Confirmar Asignación'}
               </button>
             </div>
           </div>

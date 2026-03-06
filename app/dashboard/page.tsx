@@ -134,8 +134,8 @@ export default function DashboardScreen() {
 
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-blue-100 text-sm">Saldo Total</span>
-              <span className="font-bold text-sm">${data.saldoTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="text-blue-100 text-sm">Saldo Actual</span>
+              <span className="font-bold text-sm">${data.saldoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-blue-100 text-sm">Gastos Pendientes</span>

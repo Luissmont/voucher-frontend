@@ -28,5 +28,11 @@ export const AuthService = {
     }
 
     return response;
+  },
+
+  logout() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('vaucher_token');
+    }
   }
 };

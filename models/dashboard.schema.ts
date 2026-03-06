@@ -11,8 +11,7 @@ export const CompromisoSchema = z.object({
 export type Compromiso = z.infer<typeof CompromisoSchema>;
 
 export const DashboardDataSchema = z.object({
-  saldoActual: z.number(), 
-  saldoTotal: z.number(),  
+  saldoActual: z.number(),
   gastosPendientesTotales: z.number(),
   reservadoSiguienteCiclo: z.number(),
   metaCrecimiento: z.object({
