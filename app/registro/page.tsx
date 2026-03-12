@@ -22,6 +22,9 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const isNameValid = /^[a-zA-ZÀ-ÿ\u00f1\u00d1 ]+$/.test(name) && name.length >= 2 && name.length <= 50;
+  const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d\w\W]{8,}$/.test(password);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -53,7 +56,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const isFormValid = name.length > 0 && email.length > 0 && password.length > 0 && confirmPassword.length > 0;
+  const isFormValid = name.length > 0 && email.length > 0 && password.length > 0 && confirmPassword.length > 0 && isNameValid && isPasswordValid && password === confirmPassword;
 
   return (
     <main className="min-h-screen bg-[#152D4F] flex flex-col px-6 py-8">
@@ -81,6 +84,11 @@ export default function RegisterScreen() {
             onChange={(e) => setName(e.target.value)}
             startIcon={<User size={20} />}
           />
+          {name.length > 0 && !isNameValid && (
+            <p className="text-red-400 text-xs mt-1 ml-1 mb-2">
+              El nombre debe tener entre 2 y 50 caracteres, y solo contener letras.
+            </p>
+          )}
 
           <Input
             label="Email"
@@ -101,6 +109,11 @@ export default function RegisterScreen() {
             endIcon={showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             onEndIconClick={() => setShowPassword(!showPassword)}
           />
+          {password.length > 0 && !isPasswordValid && (
+            <p className="text-red-400 text-xs mt-1 ml-1 mb-2 leading-tight">
+              La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.
+            </p>
+          )}
 
           <Input
             label="Confirmar Contraseña"

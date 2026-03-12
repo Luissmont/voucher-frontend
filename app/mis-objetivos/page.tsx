@@ -25,6 +25,7 @@ export default function MisObjetivosScreen() {
   const [isAsignarModalOpen, setIsAsignarModalOpen] = useState(false);
   const [metaToAsignar, setMetaToAsignar] = useState<Meta | null>(null);
   const [montoAsignar, setMontoAsignar] = useState('');
+  const [sobranteCicloAnterior, setSobranteCicloAnterior] = useState(0);
 
   const [diaInicio, setDiaInicio] = useState<number | null>(null);
   const esDiaDeCiclo = diaInicio !== null && new Date().getDate() === diaInicio;
@@ -47,10 +48,20 @@ export default function MisObjetivosScreen() {
       setMetaObjetivo(objetivo);
       setMontoAhorradoActual(resumen.metaCrecimiento.montoAhorrado);
       setPorcentajeGeneral(resumen.metaCrecimiento.porcentajeActual);
+      setSobranteCicloAnterior(resumen.sobranteCicloAnterior ?? 0);
       setMetas(metasData);
       setDiaInicio(config.diaInicio);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al cargar los datos');
+      let mensaje = "Error al cargar los datos";
+      if (typeof err.response?.data?.message === 'string') {
+        mensaje = err.response.data.message;
+      } else if (Array.isArray(err.response?.data?.message)) {
+        mensaje = err.response.data.message[0];
+      } else if (err.message && err.message !== '[object Object]') {
+        mensaje = err.message;
+      }
+      setErrorMsg(mensaje);
+      setTimeout(() => setErrorMsg(''), 5000);
     } finally {
       setLoading(false);
     }
@@ -74,7 +85,16 @@ export default function MisObjetivosScreen() {
       setNuevaMetaMonto('');
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al crear la meta');
+      let mensaje = "Error al crear la meta";
+      if (typeof err.response?.data?.message === 'string') {
+        mensaje = err.response.data.message;
+      } else if (Array.isArray(err.response?.data?.message)) {
+        mensaje = err.response.data.message[0];
+      } else if (err.message && err.message !== '[object Object]') {
+        mensaje = err.message;
+      }
+      setErrorMsg(mensaje);
+      setTimeout(() => setErrorMsg(''), 5000);
     } finally {
       setIsActionLoading(false);
     }
@@ -95,7 +115,16 @@ export default function MisObjetivosScreen() {
       setMetaToDelete(null);
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al eliminar la meta');
+      let mensaje = "Error al eliminar la meta";
+      if (typeof err.response?.data?.message === 'string') {
+        mensaje = err.response.data.message;
+      } else if (Array.isArray(err.response?.data?.message)) {
+        mensaje = err.response.data.message[0];
+      } else if (err.message && err.message !== '[object Object]') {
+        mensaje = err.message;
+      }
+      setErrorMsg(mensaje);
+      setTimeout(() => setErrorMsg(''), 5000);
       setIsDeleteModalOpen(false);
     } finally {
       setIsActionLoading(false);
@@ -113,7 +142,16 @@ export default function MisObjetivosScreen() {
       setMontoAsignar('');
       await loadData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al asignar fondos');
+      let mensaje = "Error al asignar fondos";
+      if (typeof err.response?.data?.message === 'string') {
+        mensaje = err.response.data.message;
+      } else if (Array.isArray(err.response?.data?.message)) {
+        mensaje = err.response.data.message[0];
+      } else if (err.message && err.message !== '[object Object]') {
+        mensaje = err.message;
+      }
+      setErrorMsg(mensaje);
+      setTimeout(() => setErrorMsg(''), 5000);
     } finally {
       setIsActionLoading(false);
     }
@@ -127,7 +165,10 @@ export default function MisObjetivosScreen() {
       <div className="absolute top-0 w-full h-[320px] bg-[#152D4F] z-0"></div>
 
       {errorMsg && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-red-500 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-lg text-center">
+        <div className="fixed top-4 left-4 right-4 z-[60] bg-red-500 text-white text-sm font-semibold px-4 pr-10 py-3 rounded-2xl shadow-lg text-center animate-in fade-in slide-in-from-top-4">
+          <button onClick={() => setErrorMsg('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-200 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
           {errorMsg}
         </div>
       )}
@@ -178,10 +219,10 @@ export default function MisObjetivosScreen() {
 
         <div className="bg-white border border-gray-100 rounded-[24px] p-6 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[#0B2046] font-semibold text-sm mb-1">Fondo de Ahorro General</p>
-            <h3 className="text-[#00C897] text-3xl font-bold mb-2">${montoAhorradoActual.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+            <p className="text-[#0B2046] font-semibold text-sm mb-1">Fondo de Ahorro General (Sobrante)</p>
+            <h3 className="text-[#00C897] text-3xl font-bold mb-2">${sobranteCicloAnterior.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
             <p className="text-xs text-gray-500 flex items-center gap-1.5 font-medium">
-              <Lock size={12} className="text-[#D97706]" /> Las asignaciones se habilitarán al final del ciclo
+              <Lock size={12} className="text-[#D97706]" /> Disponible para asignar a metas
             </p>
           </div>
           <div className="w-14 h-14 bg-[#EAFBF6] rounded-full flex items-center justify-center text-[#00C897]">
@@ -271,7 +312,7 @@ export default function MisObjetivosScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto Objetivo</label>
                 <div className="relative border border-gray-200 rounded-2xl bg-white overflow-hidden">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input type="number" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                  <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
                     value={nuevaMetaMonto} onChange={e => setNuevaMetaMonto(e.target.value)} />
                 </div>
               </div>
@@ -314,14 +355,19 @@ export default function MisObjetivosScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto a Asignar</label>
                 <div className="relative border border-gray-200 rounded-2xl bg-white overflow-hidden">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input type="number" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                  <input type="number" min="0" step="0.01" max={sobranteCicloAnterior} placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
                     value={montoAsignar} onChange={e => setMontoAsignar(e.target.value)} />
                 </div>
               </div>
-              <button onClick={handleAsignarFondos} disabled={!montoAsignar || isActionLoading}
-                className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${montoAsignar && !isActionLoading ? 'bg-[#00C897] text-white hover:bg-[#00b085]' : 'bg-gray-100 text-gray-400'}`}>
+              <button
+                onClick={handleAsignarFondos}
+                disabled={!montoAsignar || isActionLoading || sobranteCicloAnterior === 0}
+                className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${(montoAsignar && !isActionLoading && sobranteCicloAnterior > 0) ? 'bg-[#00C897] text-white hover:bg-[#00b085]' : 'bg-gray-100 text-gray-400'}`}>
                 {isActionLoading ? 'Asignando...' : 'Confirmar Asignación'}
               </button>
+              {sobranteCicloAnterior === 0 && (
+                <p className="text-sm text-red-500 mt-2 text-center font-medium">Solo puedes asignar fondos usando el sobrante de tu ciclo anterior.</p>
+              )}
             </div>
           </div>
         </div>

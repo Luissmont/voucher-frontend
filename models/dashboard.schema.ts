@@ -14,6 +14,8 @@ export const DashboardDataSchema = z.object({
   saldoActual: z.number(),
   gastosPendientesTotales: z.number(),
   reservadoSiguienteCiclo: z.number(),
+  sobranteCicloAnterior: z.number(),
+  ahorroBaseEsperado: z.number(),
   metaCrecimiento: z.object({
     porcentajeActual: z.number(),
     porcentajeObjetivo: z.number(),

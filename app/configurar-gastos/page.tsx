@@ -20,6 +20,7 @@ export default function ConfigurarGastosScreen() {
   const [categoria, setCategoria] = useState<Gasto['categoria']>('Vital');
   const [frecuencia, setFrecuencia] = useState<Gasto['frecuencia']>('Mensual');
   const [pagado, setPagado] = useState(false);
+  const [ignorarEsteCiclo, setIgnorarEsteCiclo] = useState(false);
 
   const abrirModal = () => {
     setNombre('');
@@ -27,6 +28,7 @@ export default function ConfigurarGastosScreen() {
     setCategoria('Vital');
     setFrecuencia('Mensual');
     setPagado(false);
+    setIgnorarEsteCiclo(false);
     setIsModalOpen(true);
   };
 
@@ -38,11 +40,13 @@ export default function ConfigurarGastosScreen() {
       categoria,
       frecuencia,
       pagado,
+      ignorarEsteCiclo,
     };
 
     const validation = GastoSchema.safeParse(nuevoGasto);
     if (!validation.success) {
-      alert(validation.error.issues[0].message);
+      setErrorMsg(validation.error.issues[0].message);
+      setTimeout(() => setErrorMsg(''), 5000);
       return;
     }
 
@@ -61,7 +65,16 @@ export default function ConfigurarGastosScreen() {
       await GastoService.guardarGastosLote(gastos);
       router.push('/dashboard');
     } catch (error: any) {
-      setErrorMsg(error.message || "Error al enviar el lote de gastos");
+      let mensaje = "Error al enviar el lote de gastos";
+      if (typeof error.response?.data?.message === 'string') {
+        mensaje = error.response.data.message;
+      } else if (Array.isArray(error.response?.data?.message)) {
+        mensaje = error.response.data.message[0];
+      } else if (error.message && error.message !== '[object Object]') {
+        mensaje = error.message;
+      }
+      setErrorMsg(mensaje);
+      setTimeout(() => setErrorMsg(''), 5000);
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +144,10 @@ export default function ConfigurarGastosScreen() {
         </button>
 
         {errorMsg && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 rounded-xl mb-4 text-center font-medium animate-in fade-in slide-in-from-bottom-2">
+          <div className="relative bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 pr-10 rounded-xl mb-4 text-center font-medium animate-in fade-in slide-in-from-bottom-2">
+            <button onClick={() => setErrorMsg('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+              <X size={18} />
+            </button>
             {errorMsg}
           </div>
         )}
@@ -154,6 +170,15 @@ export default function ConfigurarGastosScreen() {
 
             <div className="space-y-4">
 
+              {errorMsg && (
+                <div className="relative bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-3 pr-10 rounded-xl mb-4 text-center font-medium animate-in fade-in slide-in-from-bottom-2">
+                  <button onClick={() => setErrorMsg('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+                    <X size={18} />
+                  </button>
+                  {errorMsg}
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-semibold text-[#0B2046] mb-1 block">Nombre del gasto</label>
                 <input
@@ -169,7 +194,7 @@ export default function ConfigurarGastosScreen() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                   <input
-                    type="number" inputMode="decimal" placeholder="0.00"
+                    type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-8 pr-4 outline-none focus:border-[#0B2046]"
                     value={monto || ''} onChange={(e) => setMonto(parseFloat(e.target.value))}
                   />
@@ -213,11 +238,14 @@ export default function ConfigurarGastosScreen() {
 
               <div className="bg-[#FFFDF0] border border-yellow-200 rounded-xl p-4 flex items-center justify-between mt-2">
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-[#0B2046]">¿Ya pagaste esto este mes?</span>
-                  <span className="text-xs text-gray-500">Solo para configuración inicial</span>
+                  <span className="text-sm font-bold text-[#0B2046]">¿Ya pagaste este gasto en tu ciclo actual?</span>
+                  <span className="text-xs text-gray-500">No se descontará de tu saldo durante este ciclo</span>
                 </div>
                 <button
-                  onClick={() => setPagado(!pagado)}
+                  onClick={() => {
+                    setPagado(!pagado);
+                    setIgnorarEsteCiclo(!pagado);
+                  }}
                   className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative
                     ${pagado ? 'bg-[#00C897]' : 'bg-gray-300'}`}
                 >
@@ -257,6 +285,9 @@ const GastoCard = ({ gasto, onEliminar, colorType }: { gasto: Gasto, onEliminar:
             <span className="font-bold text-[#0B2046]">${gasto.monto.toFixed(2)}</span>
             {gasto.pagado && (
               <span className="bg-[#EAFBF6] text-[#009A74] text-[10px] font-bold px-2 py-0.5 rounded-full">Pagado</span>
+            )}
+            {gasto.ignorarEsteCiclo && (
+              <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full">Ignorado este ciclo</span>
             )}
           </div>
         </div>

@@ -34,4 +34,8 @@ export const ConfigService = {
   async programarProximoCiclo(data: Partial<{ salario: number; frecuencia: string; diaInicio: number }>): Promise<void> {
     await apiClient.patch('/perfil/proximo-ciclo', data);
   },
+
+  async actualizarMetaAhorro(ahorroBaseEsperado: number): Promise<void> {
+    await apiClient.patch('/configuracion/meta-ahorro', { ahorroBaseEsperado });
+  },
 };

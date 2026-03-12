@@ -16,6 +16,7 @@ export default function DashboardScreen() {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [activeModal, setActiveModal] = useState<'gasto' | 'ingreso' | 'prueba' | null>(null);
+  const [modalError, setModalError] = useState('');
 
   const [ingresoMonto, setIngresoMonto] = useState('');
   const [reservarIngreso, setReservarIngreso] = useState(false);
@@ -39,7 +40,7 @@ export default function DashboardScreen() {
       setData(resumen);
     } catch (error: any) {
       console.error("Error cargando dashboard", error);
-      alert(error.message || "Error al cargar la información del dashboard.");
+      // Aquí el error global podría ir en un Toast, pero de momento solo log
     } finally {
       setIsLoading(false);
     }
@@ -49,6 +50,7 @@ export default function DashboardScreen() {
 
   const closeModal = () => {
     setActiveModal(null);
+    setModalError('');
     setIngresoMonto(''); setReservarIngreso(false);
     setGastoNombre(''); setGastoMonto(''); setGastoCategoria('Variable'); setGastoFrecuencia('Mensual');
     setPruebaNombre(''); setPruebaMonto('');
@@ -57,12 +59,22 @@ export default function DashboardScreen() {
 
   const handleIngreso = async () => {
     setIsActionLoading(true);
+    setModalError('');
     try {
       await DashboardService.registrarIngresoExtra({ monto: parseFloat(ingresoMonto), reservar: reservarIngreso });
       await loadDashboardData();
       closeModal();
     } catch (error: any) {
-      alert(error.message || "Error al registrar ingreso extra");
+      let mensaje = "Error al registrar ingreso extra";
+      if (typeof error.response?.data?.message === 'string') {
+        mensaje = error.response.data.message;
+      } else if (Array.isArray(error.response?.data?.message)) {
+        mensaje = error.response.data.message[0];
+      } else if (error.message && error.message !== '[object Object]') {
+        mensaje = error.message;
+      }
+      setModalError(mensaje);
+      setTimeout(() => setModalError(''), 5000);
     } finally {
       setIsActionLoading(false);
     }
@@ -70,6 +82,7 @@ export default function DashboardScreen() {
 
   const handleGasto = async () => {
     setIsActionLoading(true);
+    setModalError('');
     try {
       await DashboardService.registrarGasto({
         nombre: gastoNombre,
@@ -80,7 +93,16 @@ export default function DashboardScreen() {
       await loadDashboardData();
       closeModal();
     } catch (error: any) {
-      alert(error.message || "Error al registrar gasto");
+      let mensaje = "Error al registrar gasto";
+      if (typeof error.response?.data?.message === 'string') {
+        mensaje = error.response.data.message;
+      } else if (Array.isArray(error.response?.data?.message)) {
+        mensaje = error.response.data.message[0];
+      } else if (error.message && error.message !== '[object Object]') {
+        mensaje = error.message;
+      }
+      setModalError(mensaje);
+      setTimeout(() => setModalError(''), 5000);
     } finally {
       setIsActionLoading(false);
     }
@@ -153,6 +175,14 @@ export default function DashboardScreen() {
                 </span>
               </div>
             )}
+            <div className="flex justify-between items-center pt-2 border-t border-[#2C4A7C]/50 mt-2">
+              <span className="text-[#00C897] text-sm font-bold">
+                Dinero disponible para metas
+              </span>
+              <span className="text-[#00C897] font-bold text-sm">
+                ${(data.sobranteCicloAnterior ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -188,13 +218,15 @@ export default function DashboardScreen() {
               </div>
               <div className="flex flex-col justify-center">
                 <h3 className="text-[#0B2046] font-bold">Meta de Crecimiento</h3>
-                <p className="text-gray-400 text-xs">Objetivo: {data.metaCrecimiento.porcentajeObjetivo}% mensual</p>
+                <p className="text-gray-400 text-xs">Objetivo: ${(data.ahorroBaseEsperado ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} por ciclo</p>
               </div>
             </div>
-            <span className="text-[#00C897] text-2xl font-bold mt-1">{data.metaCrecimiento.porcentajeActual}%</span>
+            <span className="text-[#00C897] text-2xl font-bold mt-1">
+              {data.ahorroBaseEsperado > 0 ? Math.min((data.metaCrecimiento.montoAhorrado / data.ahorroBaseEsperado) * 100, 100).toFixed(0) : 0}%
+            </span>
           </div>
           <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden mb-3">
-            <div className="bg-[#0B2046] h-full rounded-full" style={{ width: `${Math.min((data.metaCrecimiento.porcentajeActual / data.metaCrecimiento.porcentajeObjetivo) * 100, 100)}%` }}></div>
+            <div className="bg-[#0B2046] h-full rounded-full" style={{ width: `${data.ahorroBaseEsperado > 0 ? Math.min((data.metaCrecimiento.montoAhorrado / data.ahorroBaseEsperado) * 100, 100) : 0}%` }}></div>
           </div>
           <p className="text-gray-500 text-[11px] font-medium">Estás ahorrando ${data.metaCrecimiento.montoAhorrado.toLocaleString('en-US', { minimumFractionDigits: 2 })} de tu dinero libre</p>
         </Link>
@@ -202,7 +234,6 @@ export default function DashboardScreen() {
         <div className="pt-4">
           <div className="flex justify-between items-end mb-4 px-1">
             <h3 className="font-bold text-[#0B2046] text-lg">Gastos Registrados</h3>
-            <span className="text-gray-400 text-sm">{data.gastosRegistrados.length} gastos</span>
           </div>
           <div className="space-y-3">
             {data.gastosRegistrados.length === 0 && (
@@ -231,6 +262,10 @@ export default function DashboardScreen() {
                 </div>
               </div>
             ))}
+
+            <Link href="/historial" className="bg-white rounded-2xl p-4 flex items-center justify-center shadow-sm border border-gray-100 hover:border-[#00C897]/50 transition-all text-[#009A74] font-bold text-sm mt-2">
+              Ver historial completo →
+            </Link>
           </div>
         </div>
       </div>
@@ -248,7 +283,7 @@ export default function DashboardScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto del Ingreso</label>
                 <div className="relative">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input type="number" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                  <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
                     value={ingresoMonto} onChange={e => setIngresoMonto(e.target.value)} />
                 </div>
               </div>
@@ -272,6 +307,15 @@ export default function DashboardScreen() {
                   {reservarIngreso ? 'No afectará tu Saldo Actual hoy' : 'Se sumará a tu saldo disponible inmediatamente'}
                 </div>
               </div>
+
+              {modalError && (
+                <div className="relative text-red-500 text-sm font-medium text-center p-3 pr-8 bg-red-50 border border-red-100 rounded-xl animate-in fade-in slide-in-from-bottom-2">
+                  <button onClick={() => setModalError('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+                    <X size={16} />
+                  </button>
+                  {modalError}
+                </div>
+              )}
 
               <button onClick={handleIngreso} disabled={!ingresoMonto || isActionLoading}
                 className={`w-full font-bold rounded-2xl py-4 mt-2 transition-colors ${ingresoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
@@ -299,7 +343,7 @@ export default function DashboardScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto</label>
                 <div className="relative border border-gray-200 rounded-2xl bg-white overflow-hidden">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input type="number" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                  <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
                     value={gastoMonto} onChange={e => setGastoMonto(e.target.value)} />
                 </div>
               </div>
@@ -353,6 +397,15 @@ export default function DashboardScreen() {
                 </div>
               )}
 
+              {modalError && (
+                <div className="relative text-red-500 text-sm font-medium text-center p-3 pr-8 bg-red-50 border border-red-100 rounded-xl animate-in fade-in slide-in-from-bottom-2">
+                  <button onClick={() => setModalError('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+                    <X size={16} />
+                  </button>
+                  {modalError}
+                </div>
+              )}
+
               <button onClick={handleGasto} disabled={!gastoNombre || !gastoMonto || isActionLoading}
                 className={`w-full font-bold rounded-2xl py-4 flex justify-center items-center gap-2 transition-colors mt-2 ${gastoNombre && gastoMonto ? 'bg-[#0B2046] text-white hover:bg-[#1F3A63]' : 'bg-gray-100 text-gray-400'}`}>
                 <CheckCircle2 size={20} /> Confirmar Gasto
@@ -383,7 +436,7 @@ export default function DashboardScreen() {
                 <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Precio</label>
                 <div className="relative">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input type="number" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
+                  <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-gray-50 rounded-2xl py-4 pl-12 pr-4 outline-none font-bold text-[#0B2046] text-lg"
                     value={pruebaMonto} onChange={e => setPruebaMonto(e.target.value)} />
                 </div>
               </div>

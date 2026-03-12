@@ -19,13 +19,14 @@ export default function ConfiguracionScreen() {
     diaInicio: undefined,
     saldoActual: undefined,
     ahorroHistorico: undefined,
+    ahorroBaseEsperado: undefined,
   });
 
   const isStepValid = () => {
     switch (step) {
-      case 1: return formData.salario !== undefined && formData.salario > 0;
-      case 2: return formData.frecuencia !== undefined;
-      case 3: return formData.diaInicio !== undefined && formData.diaInicio >= 1 && formData.diaInicio <= 31;
+      case 1: return formData.frecuencia !== undefined;
+      case 2: return formData.salario !== undefined && formData.salario > 0;
+      case 3: return formData.diaInicio !== undefined && formData.diaInicio >= 1 && formData.diaInicio <= 99;
       case 4: return formData.saldoActual !== undefined && formData.saldoActual >= 0;
       case 5: return formData.ahorroHistorico !== undefined && formData.ahorroHistorico >= 0;
       default: return false;
@@ -46,15 +47,26 @@ export default function ConfiguracionScreen() {
         return;
       }
 
+      // Regla de economía conductual: +23% silencioso
+      const ahorroCalculado = (validation.data.ahorroHistorico || 0) * 1.23;
+      const dataToSend = { ...validation.data, ahorroBaseEsperado: ahorroCalculado };
+
       setIsLoading(true);
       try {
-        await ConfigService.saveInitialConfig(validation.data);
+        await ConfigService.saveInitialConfig(dataToSend);
         router.push('/configurar-gastos');
       } catch (error: any) {
         setErrorMsg(error.message || "Error al guardar la configuración");
       } finally {
         setIsLoading(false);
       }
+    }
+  };
+
+  const handlePrev = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      setErrorMsg('');
     }
   };
 
@@ -91,25 +103,6 @@ export default function ConfiguracionScreen() {
 
         {step === 1 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
-            <h2 className="text-[#0B2046] text-lg font-bold mb-2">Salario Neto</h2>
-            <p className="text-gray-500 text-sm mb-6">¿Cuánto ganas después de impuestos?</p>
-            <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto</label>
-            <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="number"
-                inputMode="decimal"
-                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897]"
-                placeholder="0.00"
-                value={formData.salario || ''}
-                onChange={(e) => handleNumberChange('salario', e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-[#0B2046] text-lg font-bold mb-2">Frecuencia de Pago</h2>
             <p className="text-gray-500 text-sm mb-6">¿Con qué frecuencia recibes tu salario?</p>
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Selecciona</label>
@@ -126,6 +119,27 @@ export default function ConfiguracionScreen() {
           </div>
         )}
 
+        {step === 2 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
+            <h2 className="text-[#0B2046] text-lg font-bold mb-2">Ingreso por Ciclo</h2>
+            <p className="text-gray-500 text-sm mb-6">¿Cuánto dinero recibes exactamente en cada pago?</p>
+            <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Monto</label>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897]"
+                placeholder="0.00"
+                value={formData.salario || ''}
+                onChange={(e) => handleNumberChange('salario', e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-[#0B2046] text-lg font-bold mb-2">Día de Inicio de Ciclo</h2>
@@ -133,14 +147,38 @@ export default function ConfiguracionScreen() {
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Día del mes</label>
             <div className="relative">
               <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="number"
-                inputMode="numeric"
-                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897]"
-                placeholder="Ej. 15"
+              <select
+                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897] appearance-none"
                 value={formData.diaInicio || ''}
                 onChange={(e) => handleNumberChange('diaInicio', e.target.value)}
-              />
+              >
+                <option value="" disabled>Selecciona el día</option>
+                {formData.frecuencia === 'Semanal' && (
+                  <>
+                    <option value="1">Lunes (1)</option>
+                    <option value="2">Martes (2)</option>
+                    <option value="3">Miércoles (3)</option>
+                    <option value="4">Jueves (4)</option>
+                    <option value="5">Viernes (5)</option>
+                    <option value="6">Sábado (6)</option>
+                    <option value="7">Domingo (7)</option>
+                  </>
+                )}
+                {formData.frecuencia === 'Quincenal' && (
+                  <>
+                    <option value="1">Días 1 y 16</option>
+                    <option value="15">Días 15 y Último</option>
+                  </>
+                )}
+                {formData.frecuencia === 'Mensual' && (
+                  <>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                    <option value="99">Último día del mes</option>
+                  </>
+                )}
+              </select>
             </div>
           </div>
         )}
@@ -158,9 +196,11 @@ export default function ConfiguracionScreen() {
               <input
                 type="number"
                 inputMode="decimal"
+                min="0"
+                step="0.01"
                 className="w-full bg-[#1F3A63] border border-[#2C4A7C] rounded-xl py-4 pl-12 pr-4 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-[#00C897]"
                 placeholder="0.00"
-                value={formData.saldoActual || ''}
+                value={formData.saldoActual === undefined ? '' : formData.saldoActual}
                 onChange={(e) => handleNumberChange('saldoActual', e.target.value)}
               />
             </div>
@@ -183,13 +223,15 @@ export default function ConfiguracionScreen() {
               <input
                 type="number"
                 inputMode="decimal"
+                min="0"
+                step="0.01"
                 className="w-full bg-white border border-[#A6E8D7] rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-bold text-lg outline-none focus:ring-2 focus:ring-[#00C897]"
                 placeholder="0.00"
-                value={formData.ahorroHistorico || ''}
+                value={formData.ahorroHistorico === undefined ? '' : formData.ahorroHistorico}
                 onChange={(e) => handleNumberChange('ahorroHistorico', e.target.value)}
               />
             </div>
-            <p className="text-xs text-gray-500 italic">Si nunca has ahorrado o no recuerdas, puedes poner $0</p>
+            <p className="text-xs text-gray-500 italic mb-6">Si nunca has ahorrado o no recuerdas, puedes poner $0</p>
           </div>
         )}
 
@@ -199,12 +241,21 @@ export default function ConfiguracionScreen() {
           </div>
         )}
 
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-4 flex gap-3">
+          {step > 1 && (
+            <button
+              onClick={handlePrev}
+              type="button"
+              className="px-6 py-4 bg-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-200 transition-colors"
+            >
+              Atrás
+            </button>
+          )}
           <Button
             onClick={handleNext}
             disabled={!isStepValid()}
             isLoading={isLoading}
-            className={!isStepValid() ? "bg-gray-200 text-gray-400 hover:bg-gray-200" : ""}
+            className={`flex-1 ${!isStepValid() ? "bg-gray-200 text-gray-400 hover:bg-gray-200" : ""}`}
           >
             {step === 5 ? "Sincronizar y Continuar" : "Siguiente"}
             {step < 5 && <ChevronRight size={20} className="ml-2" />}

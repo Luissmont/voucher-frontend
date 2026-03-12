@@ -124,6 +124,18 @@ export default function AjustesScreen() {
     router.push('/');
   };
 
+  const getDiaTexto = () => {
+    if (!config) return 'Día 1 del mes';
+    if (config.frecuencia === 'Semanal') {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      return `Día de Inicio: ${dias[Number(config.diaInicio) - 1] || 'Lunes'}`;
+    }
+    if (config.frecuencia === 'Mensual' && Number(config.diaInicio) === 99) {
+      return 'Último día del mes';
+    }
+    return `Día ${config.diaInicio || '1'} del mes`;
+  };
+
   if (isLoading) return <div className="min-h-screen bg-[#F8FAFC]"></div>;
 
   return (
@@ -158,9 +170,6 @@ export default function AjustesScreen() {
             <h2 className="text-[#0B2046] text-lg font-bold flex items-center gap-2">
               <User className="text-[#00C897]" size={20} /> Mi Perfil Financiero
             </h2>
-            <button onClick={() => setIsEditModalOpen(true)} className="text-[#8B5CF6] hover:text-[#7C3AED] transition-colors p-2 bg-[#F5F3FF] rounded-xl active:scale-95">
-              <Edit3 size={18} />
-            </button>
           </div>
 
           <div className="space-y-4">
@@ -168,7 +177,7 @@ export default function AjustesScreen() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center"><DollarSign size={18} /></div>
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Salario Base Actual</p>
+                  <p className="text-xs text-gray-400 font-medium">Ingreso por Ciclo</p>
                   <p className="text-[#0B2046] font-bold">${config?.salario?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}</p>
                 </div>
               </div>
@@ -184,12 +193,22 @@ export default function AjustesScreen() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center pb-4 border-b border-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#EAFBF6] text-[#00C897] rounded-full flex items-center justify-center"><Target size={18} /></div>
                 <div>
+                  <p className="text-xs text-gray-400 font-medium">Meta de Ahorro Sugerida</p>
+                  <p className="text-[#0B2046] font-bold">${config?.ahorroBaseEsperado?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center"><Clock size={18} /></div>
+                <div>
                   <p className="text-xs text-gray-400 font-medium">Día de Inicio de Ciclo</p>
-                  <p className="text-[#0B2046] font-bold">Día {config?.diaInicio || '1'} del mes</p>
+                  <p className="text-[#0B2046] font-bold">{getDiaTexto()}</p>
                 </div>
               </div>
             </div>

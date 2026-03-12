@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3007",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -17,6 +17,7 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "selenium-webdriver": "^4.41.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
