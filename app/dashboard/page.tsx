@@ -7,7 +7,8 @@ import { DashboardData } from '@/models/dashboard.schema';
 import {
   Settings, Target, Zap, Plus, Receipt,
   AlertCircle, Calendar, X, DollarSign, Lock,
-  TrendingDown, CheckCircle2
+  TrendingDown, CheckCircle2,
+  CircleDollarSign
 } from 'lucide-react';
 
 export default function DashboardScreen() {
@@ -144,7 +145,7 @@ export default function DashboardScreen() {
 
         <div className="bg-[#1F3A63] border border-[#2C4A7C]/50 rounded-[24px] p-6 shadow-xl text-white">
           <div className="flex items-center gap-2 mb-2">
-            <Target size={16} className="text-[#00C897]" />
+            <CircleDollarSign size={16} className="text-[#00C897]" />
             <span className="text-sm font-medium opacity-90">Saldo Actual</span>
           </div>
           <h2 className="text-[42px] leading-none font-bold tracking-tight mb-1">
@@ -188,7 +189,7 @@ export default function DashboardScreen() {
 
         <button
           onClick={() => setActiveModal('prueba')}
-          className="w-full bg-[#00C897] hover:bg-[#00b085] text-white font-bold text-lg rounded-2xl py-4 flex justify-center items-center gap-2 shadow-lg shadow-[#00C897]/20 transition-transform active:scale-95"
+          className="w-full bg-[#0B2046] hover:bg-[#2C4A7C] text-white font-bold text-lg rounded-2xl py-4 flex justify-center items-center gap-2 shadow-lg shadow-[#152D4F]/20 transition-transform active:scale-95"
         >
           <Zap size={20} fill="currentColor" /> Hacer Prueba de Gasto
         </button>
