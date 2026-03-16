@@ -5,9 +5,9 @@ const chrome = require('selenium-webdriver/chrome');
 // CONFIGURACION
 // ==========================================
 
-const BASE_URL = 'https://voucher-frontend-blond.vercel.app';
-const EMAIL = 'guzman@gmail.com';      // Cambia por un usuario real
-const PASSWORD = 'AcLt281424@';     // Cambia por el password real
+const BASE_URL = process.env.TEST_BASE_URL || 'https://voucher-frontend-blond.vercel.app';
+const EMAIL = process.env.TEST_USER_EMAIL || 'USUARIO_TEST';      // Usar variables de entorno para seguridad
+const PASSWORD = process.env.TEST_USER_PASSWORD || 'PASSWORD_TEST'; // No dejar contraseñas reales en archivos .js
 
 // ==========================================
 // PAGE OBJECTS

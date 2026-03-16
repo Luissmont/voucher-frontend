@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   // so that server-side rewrites (proxy) work.
   ...(isVercel ? {} : { output: 'export' }),
 
+  // @ts-ignore - Next.js 15+ turbopack root config may not be fully typed yet
+  turbopack: {
+    root: process.cwd(),
+  },
+
   images: {
     unoptimized: true,
   },
@@ -18,7 +23,7 @@ const nextConfig: NextConfig = {
       return [
         {
           source: '/api-proxy/:path*',
-          destination: `http://3.216.97.117:3000/api/:path*`,
+          destination: `${process.env.NEXT_PUBLIC_API_URL}/:path*`,
         },
       ];
     },

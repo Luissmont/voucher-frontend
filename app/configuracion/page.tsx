@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { ConfigService } from '@/services/config.service';
 import { InitialConfigSchema, InitialConfig } from '@/models/config.schema';
-import { Calendar, DollarSign, ChevronRight } from 'lucide-react';
+import { Calendar, DollarSign, ChevronRight, ChevronDown } from 'lucide-react';
 
 export default function ConfiguracionScreen() {
   const router = useRouter();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDayDropdownOpen, setIsDayDropdownOpen] = useState(false);
 
   const [formData, setFormData] = useState<Partial<InitialConfig>>({
     salario: undefined,
@@ -74,6 +75,34 @@ export default function ConfiguracionScreen() {
     const parsed = parseFloat(value);
     setFormData({ ...formData, [field]: isNaN(parsed) ? undefined : parsed });
   };
+
+  const getDayOptions = () => {
+    if (formData.frecuencia === 'Semanal') {
+      return [
+        { value: 1, label: 'Lunes (1)' },
+        { value: 2, label: 'Martes (2)' },
+        { value: 3, label: 'Miércoles (3)' },
+        { value: 4, label: 'Jueves (4)' },
+        { value: 5, label: 'Viernes (5)' },
+        { value: 6, label: 'Sábado (6)' },
+        { value: 7, label: 'Domingo (7)' },
+      ];
+    }
+    if (formData.frecuencia === 'Quincenal') {
+      return [
+        { value: 1, label: 'Días 1 y 16' },
+        { value: 15, label: 'Días 15 y Último' },
+      ];
+    }
+    if (formData.frecuencia === 'Mensual') {
+      const days = Array.from({ length: 28 }, (_, i) => ({ value: i + 1, label: `${i + 1}` }));
+      return [...days, { value: 99, label: 'Último día del mes' }];
+    }
+    return [];
+  };
+
+  const dayOptions = getDayOptions();
+  const selectedDayOption = dayOptions.find(o => o.value === formData.diaInicio);
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -143,42 +172,41 @@ export default function ConfiguracionScreen() {
         {step === 3 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-right-4 duration-300">
             <h2 className="text-[#0B2046] text-lg font-bold mb-2">Día de Inicio de Ciclo</h2>
-            <p className="text-gray-500 text-sm mb-6">¿Qué día del mes comienza tu ciclo de pago?</p>
+            <p className="text-gray-500 text-sm mb-6">¿Cuándo recibes habitualmente tu pago?</p>
             <label className="text-sm font-semibold text-[#0B2046] mb-2 block">Día del mes</label>
             <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <select
-                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-4 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897] appearance-none"
-                value={formData.diaInicio || ''}
-                onChange={(e) => handleNumberChange('diaInicio', e.target.value)}
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={20} />
+
+              <div
+                onClick={() => setIsDayDropdownOpen(!isDayDropdownOpen)}
+                className="w-full bg-gray-50 rounded-xl py-4 pl-12 pr-12 text-[#0B2046] font-medium outline-none focus:ring-2 focus:ring-[#00C897] cursor-pointer flex items-center justify-between border border-transparent transition-all select-none"
+                tabIndex={0}
+                onBlur={() => setTimeout(() => setIsDayDropdownOpen(false), 200)}
               >
-                <option value="" disabled>Selecciona el día</option>
-                {formData.frecuencia === 'Semanal' && (
-                  <>
-                    <option value="1">Lunes (1)</option>
-                    <option value="2">Martes (2)</option>
-                    <option value="3">Miércoles (3)</option>
-                    <option value="4">Jueves (4)</option>
-                    <option value="5">Viernes (5)</option>
-                    <option value="6">Sábado (6)</option>
-                    <option value="7">Domingo (7)</option>
-                  </>
-                )}
-                {formData.frecuencia === 'Quincenal' && (
-                  <>
-                    <option value="1">Días 1 y 16</option>
-                    <option value="15">Días 15 y Último</option>
-                  </>
-                )}
-                {formData.frecuencia === 'Mensual' && (
-                  <>
-                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day}>{day}</option>
-                    ))}
-                    <option value="99">Último día del mes</option>
-                  </>
-                )}
-              </select>
+                <span className={selectedDayOption ? 'text-[#0B2046]' : 'text-gray-400'}>
+                  {selectedDayOption ? selectedDayOption.label : 'Selecciona el día'}
+                </span>
+                <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-transform duration-200 ${isDayDropdownOpen ? 'rotate-180' : ''}`} size={20} />
+              </div>
+
+              {isDayDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-[240px] overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2 duration-200 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                  {dayOptions.map(opt => (
+                    <div
+                      key={opt.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNumberChange('diaInicio', opt.value.toString());
+                        setIsDayDropdownOpen(false);
+                      }}
+                      className={`px-4 py-3 cursor-pointer text-sm font-medium border-b border-gray-50 last:border-0 transition-colors
+                        ${formData.diaInicio === opt.value ? 'bg-[#EAFBF6] text-[#009A74]' : 'text-[#0B2046] hover:bg-gray-50'}`}
+                    >
+                      {opt.label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
