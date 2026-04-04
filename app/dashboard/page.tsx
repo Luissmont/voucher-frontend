@@ -250,7 +250,7 @@ export default function DashboardScreen() {
                   </div>
                   <div>
                     <p className="text-[#0B2046] font-bold text-sm">{comp.nombre}</p>
-                    <p className="text-gray-400 text-xs">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })} mensual</p>
+                    <p className="text-gray-400 text-xs">${comp.montoProrrateado.toLocaleString('en-US', { minimumFractionDigits: 2 })} {comp.frecuencia ? comp.frecuencia.toLowerCase() : 'mensual'}</p>
                   </div>
                 </div>
                 <div className="text-right">

@@ -5,6 +5,7 @@ export const CompromisoSchema = z.object({
   nombre: z.string(),
   montoProrrateado: z.number(),
   tipo: z.enum(['Vital', 'Recurrente']),
+  frecuencia: z.string().optional(),
   pagado: z.boolean(),
 });
 
